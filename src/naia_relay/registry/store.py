@@ -14,6 +14,7 @@ class RegistryStore:
     def __init__(self, mode: RegistryMode) -> None:
         self.mode = mode
         self._revision = 0
+        self._stale = False
         self._tools: dict[str, ToolDefinition] = {}
         self._resources: dict[str, ResourceDefinition] = {}
         self._prompts: dict[str, PromptDefinition] = {}
@@ -22,9 +23,20 @@ class RegistryStore:
     def revision(self) -> int:
         return self._revision
 
+    @property
+    def stale(self) -> bool:
+        return self._stale
+
     def _bump_revision(self) -> int:
         self._revision += 1
+        self._stale = False
         return self._revision
+
+    def mark_stale(self) -> None:
+        self._stale = True
+
+    def mark_fresh(self) -> None:
+        self._stale = False
 
     def register_tool(self, tool: ToolDefinition) -> int:
         if tool.name in self._tools:
@@ -98,3 +110,4 @@ class RegistryStore:
             if isinstance(prompt, PromptDefinition)
         }
         self._revision = int(revision)
+        self._stale = False

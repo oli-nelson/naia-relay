@@ -13,12 +13,17 @@ from naia_relay.protocols.tep.models import (
     DeregisterResourcesPayload,
     DeregisterToolsPayload,
     ExecuteToolPayload,
+    ExecutionErrorPayload,
+    ExecutionProgressPayload,
+    ExecutionResultPayload,
     GetPromptPayload,
+    PromptResultPayload,
     ReadResourcePayload,
     RegisterExecutorPayload,
     RegisterPromptsPayload,
     RegisterResourcesPayload,
     RegisterToolsPayload,
+    ResourceResultPayload,
     StatusPayload,
 )
 from naia_relay.registry import PromptDefinition, RegistryStore, ResourceDefinition, ToolDefinition
@@ -47,6 +52,12 @@ class TEPHandler:
     execute_tool: ExecuteToolCallback | None = None
     read_resource: ReadResourceCallback | None = None
     get_prompt: GetPromptCallback | None = None
+    executor_available: bool = True
+    last_progress: dict[str, Any] | None = None
+    last_execution_result: dict[str, Any] | None = None
+    last_execution_error: dict[str, Any] | None = None
+    last_resource_result: dict[str, Any] | None = None
+    last_prompt_result: dict[str, Any] | None = None
 
     async def handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
         envelope = self.validate_message(message)
@@ -132,6 +143,10 @@ class TEPHandler:
                     )
                 contents = await self.read_resource(payload)
                 return self._ok_response(envelope, {"uri": payload.uri, "contents": contents})
+            case "resource_result":
+                assert isinstance(payload, ResourceResultPayload)
+                self.last_resource_result = payload.model_dump()
+                return self._ok_response(envelope, payload.model_dump())
             case "get_prompt":
                 assert isinstance(payload, GetPromptPayload)
                 if self.get_prompt is None:
@@ -140,7 +155,25 @@ class TEPHandler:
                     )
                 messages = await self.get_prompt(payload)
                 return self._ok_response(envelope, {"name": payload.name, "messages": messages})
+            case "prompt_result":
+                assert isinstance(payload, PromptResultPayload)
+                self.last_prompt_result = payload.model_dump()
+                return self._ok_response(envelope, payload.model_dump())
+            case "execution_progress":
+                assert isinstance(payload, ExecutionProgressPayload)
+                self.last_progress = payload.model_dump()
+                return self._ok_response(envelope, payload.model_dump())
+            case "execution_result":
+                assert isinstance(payload, ExecutionResultPayload)
+                self.last_execution_result = payload.model_dump()
+                return self._ok_response(envelope, payload.model_dump())
+            case "execution_error":
+                assert isinstance(payload, ExecutionErrorPayload)
+                self.last_execution_error = payload.model_dump()
+                return self._ok_response(envelope, payload.model_dump())
             case "heartbeat" | "shutdown" | "disconnect_notice":
+                if envelope.message_type == "disconnect_notice":
+                    self.executor_available = False
                 return self._ok_response(envelope)
             case _:
                 return self._error_response(envelope, "unsupported", envelope.message_type)

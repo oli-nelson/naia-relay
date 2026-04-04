@@ -50,7 +50,10 @@ class HttpTransportAdapter(TransportAdapter):
 
     async def _perform_request(self, message: dict[str, Any]) -> dict[str, Any]:
         if self._requester is not None:
-            payload = await self._requester(message)
+            try:
+                payload = await self._requester(message)
+            except Exception as exc:
+                raise TransportError(f"HTTP transport request failed: {exc}") from exc
         else:
             if self._session is None:
                 raise TransportError("http transport is not connected")

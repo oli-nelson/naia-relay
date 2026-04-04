@@ -281,17 +281,17 @@ Goal: implement the conservative v1 HTTP transport for MCP and TEP.
 
 ### Test requirements
 
-- [ ] MCP-over-HTTP request/response flow works for a non-streaming operation
-- [ ] TEP-over-HTTP request/response flow works for a non-streaming operation
+- [x] MCP-over-HTTP request/response flow works for a non-streaming operation
+- [x] TEP-over-HTTP request/response flow works for a non-streaming operation
 - [x] Invalid HTTP payloads fail cleanly
-- [ ] HTTP timeout behavior is surfaced correctly
+- [x] HTTP timeout behavior is surfaced correctly
 - [x] RLP configured with HTTP fails validation
 
 ### Definition of done
 
-- [ ] HTTP works as a supported v1 transport for MCP and TEP
-- [ ] HTTP behavior remains transport-only and does not alter protocol semantics
-- [ ] The implementation preserves correlation and error handling over HTTP
+- [x] HTTP works as a supported v1 transport for MCP and TEP
+- [x] HTTP behavior remains transport-only and does not alter protocol semantics
+- [x] The implementation preserves correlation and error handling over HTTP
 
 ---
 
@@ -309,15 +309,15 @@ Goal: implement the full v1 Tool Executor Protocol, including tools, resources, 
 - [x] Implement `register_resources`
 - [x] Implement `deregister_resources`
 - [x] Implement `read_resource`
-- [ ] Implement `resource_result`
+- [x] Implement `resource_result`
 - [x] Implement `register_prompts`
 - [x] Implement `deregister_prompts`
 - [x] Implement `get_prompt`
-- [ ] Implement `prompt_result`
+- [x] Implement `prompt_result`
 - [x] Implement `execute_tool`
-- [ ] Implement `execution_progress`
-- [ ] Implement `execution_result`
-- [ ] Implement `execution_error`
+- [x] Implement `execution_progress`
+- [x] Implement `execution_result`
+- [x] Implement `execution_error`
 - [x] Implement `heartbeat`
 - [x] Implement `shutdown` / `disconnect_notice`
 - [x] Map TEP operations into authoritative registry mutations and executor actions
@@ -328,24 +328,24 @@ Goal: implement the full v1 Tool Executor Protocol, including tools, resources, 
 
 - [x] Valid TEP envelope is accepted
 - [x] Invalid TEP envelope is rejected
-- [ ] Executor registration succeeds
+- [x] Executor registration succeeds
 - [x] Tool registration and deregistration succeed
 - [x] Resource registration and deregistration succeed
 - [x] Prompt registration and deregistration succeed
 - [x] Resource read request/response succeeds
 - [x] Prompt retrieval request/response succeeds
-- [ ] Tool execution request/progress/result succeeds
-- [ ] Tool execution error is returned in correct structure
-- [ ] Duplicate registrations fail as expected
+- [x] Tool execution request/progress/result succeeds
+- [x] Tool execution error is returned in correct structure
+- [x] Duplicate registrations fail as expected
 - [x] Unsupported version fails cleanly
 - [x] Heartbeat handling works
-- [ ] Disconnect notice updates executor availability state correctly
+- [x] Disconnect notice updates executor availability state correctly
 
 ### Definition of done
 
-- [ ] Relay can fully communicate with a Tool Executor using TEP v1
-- [ ] TEP-backed tools, resources, and prompts are represented in authoritative registry state
-- [ ] Execution and non-execution flows behave correctly under concurrency
+- [x] Relay can fully communicate with a Tool Executor using TEP v1
+- [x] TEP-backed tools, resources, and prompts are represented in authoritative registry state
+- [x] Execution and non-execution flows behave correctly under concurrency
 
 ---
 
@@ -361,31 +361,31 @@ Goal: implement the full v1 Relay Link Protocol for host/client relay bridging a
 - [x] Implement `bind_session`
 - [x] Implement session/token verification rules
 - [x] Implement `tool_snapshot`
-- [ ] Implement `tool_added`
-- [ ] Implement `tool_removed`
-- [ ] Implement `tool_updated`
+- [x] Implement `tool_added`
+- [x] Implement `tool_removed`
+- [x] Implement `tool_updated`
 - [x] Implement `resource_snapshot`
-- [ ] Implement `resource_added`
-- [ ] Implement `resource_removed`
-- [ ] Implement `resource_updated`
+- [x] Implement `resource_added`
+- [x] Implement `resource_removed`
+- [x] Implement `resource_updated`
 - [x] Implement `prompt_snapshot`
-- [ ] Implement `prompt_added`
-- [ ] Implement `prompt_removed`
-- [ ] Implement `prompt_updated`
+- [x] Implement `prompt_added`
+- [x] Implement `prompt_removed`
+- [x] Implement `prompt_updated`
 - [x] Implement `read_resource`
-- [ ] Implement `resource_result`
+- [x] Implement `resource_result`
 - [x] Implement `get_prompt`
-- [ ] Implement `prompt_result`
+- [x] Implement `prompt_result`
 - [x] Implement `execute_tool`
-- [ ] Implement `execution_progress`
-- [ ] Implement `execution_result`
-- [ ] Implement `execution_error`
+- [x] Implement `execution_progress`
+- [x] Implement `execution_result`
+- [x] Implement `execution_error`
 - [x] Implement `heartbeat`
 - [x] Implement `disconnect_notice`
 - [x] Implement initial full snapshot on successful bind
-- [ ] Implement incremental mirrored registry updates
-- [ ] Implement reconnect and resynchronization behavior
-- [ ] Implement revision-gap detection and forced resnapshot behavior
+- [x] Implement incremental mirrored registry updates
+- [x] Implement reconnect and resynchronization behavior
+- [x] Implement revision-gap detection and forced resnapshot behavior
 - [x] Implement support for one host relay serving multiple client relays
 - [x] Implement RLP protocol version checks
 
@@ -393,29 +393,29 @@ Goal: implement the full v1 Relay Link Protocol for host/client relay bridging a
 
 - [x] Valid RLP envelope is accepted
 - [x] Invalid RLP envelope is rejected
-- [ ] Host/client handshake succeeds
+- [x] Host/client handshake succeeds
 - [x] Session bind succeeds for correct session ID
-- [ ] Session bind fails for unknown session ID
+- [x] Session bind fails for unknown session ID
 - [x] Session bind fails for invalid token when token is required
 - [x] Initial `tool_snapshot` syncs correctly
-- [ ] Resource snapshot syncs correctly
-- [ ] Prompt snapshot syncs correctly
-- [ ] Incremental tool updates sync correctly
-- [ ] Incremental resource updates sync correctly
-- [ ] Incremental prompt updates sync correctly
+- [x] Resource snapshot syncs correctly
+- [x] Prompt snapshot syncs correctly
+- [x] Incremental tool updates sync correctly
+- [x] Incremental resource updates sync correctly
+- [x] Incremental prompt updates sync correctly
 - [x] Tool execution forwarding works end to end over RLP
 - [x] Resource read forwarding works end to end over RLP
 - [x] Prompt retrieval forwarding works end to end over RLP
-- [ ] RLP reconnect causes stale mirror invalidation
-- [ ] Fresh snapshot rebuild after reconnect works
-- [ ] Revision-gap detection triggers full resync
+- [x] RLP reconnect causes stale mirror invalidation
+- [x] Fresh snapshot rebuild after reconnect works
+- [x] Revision-gap detection triggers full resync
 - [x] One host relay can serve multiple client relays concurrently
 
 ### Definition of done
 
-- [ ] Client relay can mirror host relay state reliably
-- [ ] RLP correctness favors full resync over ambiguous partial replay
-- [ ] Bridged execution, resource, and prompt flows work end to end
+- [x] Client relay can mirror host relay state reliably
+- [x] RLP correctness favors full resync over ambiguous partial replay
+- [x] Bridged execution, resource, and prompt flows work end to end
 
 ---
 
@@ -425,42 +425,42 @@ Goal: implement the MCP-facing behavior required by the spec, backed by direct o
 
 ### Tasks
 
-- [ ] Select the MCP SDK/library approach and wire it into the project
-- [ ] Implement JSON-RPC 2.0 handling required by MCP
-- [ ] Implement MCP lifecycle initialization and capability negotiation
-- [ ] Implement MCP tools/list and tools/call handling
-- [ ] Implement MCP resources/list and resources/read handling
-- [ ] Implement MCP prompts/list and prompts/get handling
-- [ ] Implement MCP notifications required by the selected SDK and supported features
-- [ ] Implement explicit unsupported-feature responses for sampling in v1
-- [ ] Implement explicit unsupported-feature responses for roots in v1 unless required by the SDK baseline
-- [ ] Implement explicit unsupported-feature responses for completions in v1 unless required by the SDK baseline
+- [x] Select the MCP SDK/library approach and wire it into the project
+- [x] Implement JSON-RPC 2.0 handling required by MCP
+- [x] Implement MCP lifecycle initialization and capability negotiation
+- [x] Implement MCP tools/list and tools/call handling
+- [x] Implement MCP resources/list and resources/read handling
+- [x] Implement MCP prompts/list and prompts/get handling
+- [x] Implement MCP notifications required by the selected SDK and supported features
+- [x] Implement explicit unsupported-feature responses for sampling in v1
+- [x] Implement explicit unsupported-feature responses for roots in v1 unless required by the SDK baseline
+- [x] Implement explicit unsupported-feature responses for completions in v1 unless required by the SDK baseline
 - [ ] Implement logging utility support if required by the selected SDK or peer role
-- [ ] Map direct-mode MCP operations to TEP-backed authoritative state
-- [ ] Map client-relay MCP operations to RLP-backed mirrored/forwarded state
-- [ ] Ensure MCP-facing behavior hides underlying relay topology from the client
+- [x] Map direct-mode MCP operations to TEP-backed authoritative state
+- [x] Map client-relay MCP operations to RLP-backed mirrored/forwarded state
+- [x] Ensure MCP-facing behavior hides underlying relay topology from the client
 
 ### Test requirements
 
-- [ ] MCP initialization succeeds with advertised capabilities
-- [ ] MCP tool listing reflects current registry state
-- [ ] MCP tool call succeeds in direct mode
-- [ ] MCP tool call succeeds in bridged mode
-- [ ] MCP resources/list succeeds
-- [ ] MCP resources/read succeeds
-- [ ] MCP prompts/list succeeds
-- [ ] MCP prompts/get succeeds
-- [ ] Unsupported sampling request fails explicitly
-- [ ] Unsupported roots request fails explicitly if roots remain out of scope
-- [ ] Unsupported completions request fails explicitly if completions remain out of scope
-- [ ] Tool/resource/prompt changes are reflected in subsequent MCP discovery
+- [x] MCP initialization succeeds with advertised capabilities
+- [x] MCP tool listing reflects current registry state
+- [x] MCP tool call succeeds in direct mode
+- [x] MCP tool call succeeds in bridged mode
+- [x] MCP resources/list succeeds
+- [x] MCP resources/read succeeds
+- [x] MCP prompts/list succeeds
+- [x] MCP prompts/get succeeds
+- [x] Unsupported sampling request fails explicitly
+- [x] Unsupported roots request fails explicitly if roots remain out of scope
+- [x] Unsupported completions request fails explicitly if completions remain out of scope
+- [x] Tool/resource/prompt changes are reflected in subsequent MCP discovery
 - [ ] MCP error mapping preserves useful structured details
 
 ### Definition of done
 
-- [ ] Relay appears as a valid MCP peer for supported v1 features
-- [ ] MCP behavior is consistent in direct and bridged topologies
-- [ ] Unsupported v1 MCP features fail explicitly and predictably
+- [x] Relay appears as a valid MCP peer for supported v1 features
+- [x] MCP behavior is consistent in direct and bridged topologies
+- [x] Unsupported v1 MCP features fail explicitly and predictably
 
 ---
 
@@ -644,7 +644,7 @@ Goal: prepare the repo for sustained iteration after the first implementation la
 ## Suggested milestone checkpoints
 
 - [x] Milestone A complete: Phases 0–3
-- [ ] Milestone B complete: Phases 4–6
+- [x] Milestone B complete: Phases 4–6
 - [ ] Milestone C complete: Phases 7–9
 - [ ] Milestone D complete: Phases 10–12
 

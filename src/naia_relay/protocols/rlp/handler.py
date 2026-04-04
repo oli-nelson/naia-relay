@@ -11,13 +11,18 @@ from naia_relay.protocols.rlp.models import (
     MESSAGE_PAYLOAD_MODELS,
     BindSessionPayload,
     ExecuteToolPayload,
+    ExecutionErrorPayload,
+    ExecutionProgressPayload,
+    ExecutionResultPayload,
     GetPromptPayload,
     HelloPayload,
     PromptMutationPayload,
     PromptRemovedPayload,
+    PromptResultPayload,
     ReadResourcePayload,
     ResourceMutationPayload,
     ResourceRemovedPayload,
+    ResourceResultPayload,
     SnapshotPayload,
     StatusPayload,
     ToolMutationPayload,
@@ -55,6 +60,11 @@ class RLPHandler:
     read_resource: ReadResourceCallback | None = None
     get_prompt: GetPromptCallback | None = None
     _bound_clients: set[str] = None  # type: ignore[assignment]
+    last_progress: dict[str, Any] | None = None
+    last_execution_result: dict[str, Any] | None = None
+    last_execution_error: dict[str, Any] | None = None
+    last_resource_result: dict[str, Any] | None = None
+    last_prompt_result: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if self._bound_clients is None:
@@ -89,26 +99,44 @@ class RLPHandler:
                 return self._ok_response(envelope)
             case "tool_added" | "tool_updated":
                 assert isinstance(payload, ToolMutationPayload)
+                gap = self._validate_incremental_revision(payload.registry_revision)
+                if gap is not None:
+                    return gap
                 self._upsert_tool(payload)
                 return self._ok_response(envelope)
             case "tool_removed":
                 assert isinstance(payload, ToolRemovedPayload)
+                gap = self._validate_incremental_revision(payload.registry_revision)
+                if gap is not None:
+                    return gap
                 self.registry.deregister_tool(payload.tool_name)
                 return self._ok_response(envelope)
             case "resource_added" | "resource_updated":
                 assert isinstance(payload, ResourceMutationPayload)
+                gap = self._validate_incremental_revision(payload.registry_revision)
+                if gap is not None:
+                    return gap
                 self._upsert_resource(payload)
                 return self._ok_response(envelope)
             case "resource_removed":
                 assert isinstance(payload, ResourceRemovedPayload)
+                gap = self._validate_incremental_revision(payload.registry_revision)
+                if gap is not None:
+                    return gap
                 self.registry.deregister_resource(payload.uri)
                 return self._ok_response(envelope)
             case "prompt_added" | "prompt_updated":
                 assert isinstance(payload, PromptMutationPayload)
+                gap = self._validate_incremental_revision(payload.registry_revision)
+                if gap is not None:
+                    return gap
                 self._upsert_prompt(payload)
                 return self._ok_response(envelope)
             case "prompt_removed":
                 assert isinstance(payload, PromptRemovedPayload)
+                gap = self._validate_incremental_revision(payload.registry_revision)
+                if gap is not None:
+                    return gap
                 self.registry.deregister_prompt(payload.name)
                 return self._ok_response(envelope)
             case "execute_tool":
@@ -128,6 +156,10 @@ class RLPHandler:
                     envelope,
                     {"uri": payload.uri, "contents": await self.read_resource(payload)},
                 )
+            case "resource_result":
+                assert isinstance(payload, ResourceResultPayload)
+                self.last_resource_result = payload.model_dump()
+                return self._ok_response(envelope, payload.model_dump())
             case "get_prompt":
                 assert isinstance(payload, GetPromptPayload)
                 if self.get_prompt is None:
@@ -138,12 +170,25 @@ class RLPHandler:
                     envelope,
                     {"name": payload.name, "messages": await self.get_prompt(payload)},
                 )
+            case "prompt_result":
+                assert isinstance(payload, PromptResultPayload)
+                self.last_prompt_result = payload.model_dump()
+                return self._ok_response(envelope, payload.model_dump())
+            case "execution_progress":
+                assert isinstance(payload, ExecutionProgressPayload)
+                self.last_progress = payload.model_dump()
+                return self._ok_response(envelope, payload.model_dump())
+            case "execution_result":
+                assert isinstance(payload, ExecutionResultPayload)
+                self.last_execution_result = payload.model_dump()
+                return self._ok_response(envelope, payload.model_dump())
+            case "execution_error":
+                assert isinstance(payload, ExecutionErrorPayload)
+                self.last_execution_error = payload.model_dump()
+                return self._ok_response(envelope, payload.model_dump())
             case (
                 "heartbeat"
                 | "disconnect_notice"
-                | "execution_progress"
-                | "execution_result"
-                | "execution_error"
             ):
                 return self._ok_response(envelope)
             case _:
@@ -231,6 +276,30 @@ class RLPHandler:
             ],
         }
         self.registry.replace_from_snapshot(snapshot)
+
+    def mark_stale(self) -> None:
+        self.registry.mark_stale()
+
+    def _validate_incremental_revision(self, revision: int) -> dict[str, Any] | None:
+        expected = self.registry.revision + 1
+        if revision != expected:
+            self.registry.mark_stale()
+            envelope = RLPEnvelope(
+                protocol="rlp",
+                version="1.0",
+                message_type="revision_gap",
+                message_id=new_message_id(),
+                relay_session_id=self.relay_session_id,
+                source_relay_id=self.host_relay_id,
+                payload={},
+            )
+            return self._error_response(
+                envelope,
+                "revision_gap",
+                f"Expected registry revision {expected} but received {revision}",
+            )
+        self.registry.mark_fresh()
+        return None
 
     def _upsert_tool(self, payload: ToolMutationPayload) -> None:
         existing = self.registry.get_tool(payload.tool.name)

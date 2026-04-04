@@ -21,6 +21,19 @@ def test_load_config_from_cli_file(tmp_path: Path) -> None:
     assert source.kind == "cli_file"
 
 
+def test_load_config_from_environment_file(tmp_path: Path) -> None:
+    path = tmp_path / "config.yaml"
+    path.write_text(
+        "role: direct\nmcp:\n  transport: stdio\nexecutor:\n  transport: stdio\n",
+        encoding="utf-8",
+    )
+
+    config, source = load_config(environ={"NAIA_RELAY_CONFIG_FILE": str(path)})
+
+    assert config.role == "direct"
+    assert source.kind == "env_file"
+
+
 def test_load_config_from_cli_yaml() -> None:
     config, source = load_config(
         cli_config_yaml=(
@@ -32,6 +45,21 @@ def test_load_config_from_cli_yaml() -> None:
 
     assert config.role == "client"
     assert source.kind == "cli_yaml"
+
+
+def test_load_config_from_environment_yaml() -> None:
+    config, source = load_config(
+        environ={
+            "NAIA_RELAY_CONFIG_YAML": (
+                "role: client\n"
+                "mcp:\n  transport: stdio\n"
+                "relay_link:\n  transport: tcp\n  port: 9001\n"
+            )
+        }
+    )
+
+    assert config.role == "client"
+    assert source.kind == "env_yaml"
 
 
 def test_cli_precedence_over_environment(tmp_path: Path) -> None:
