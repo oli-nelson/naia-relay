@@ -155,3 +155,16 @@ def test_relay_link_http_is_rejected() -> None:
                 "relay_link:\n  transport: http\n  port: 9001\n"
             )
         )
+
+
+def test_host_relay_link_bind_port_zero_is_allowed() -> None:
+    config, _ = load_config(
+        cli_config_yaml=(
+            "role: host\n"
+            "executor:\n  transport: stdio\n"
+            "relay_link:\n  transport: tcp\n  bind_host: 127.0.0.1\n  bind_port: 0\n"
+        )
+    )
+
+    assert config.role == "host"
+    assert config.relay_link.bind_port == 0

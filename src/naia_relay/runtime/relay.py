@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from naia_relay.config import ClientConfig, DirectConfig, HostConfig, RelayAppConfig
@@ -21,6 +23,7 @@ from naia_relay.protocols.mcp import MCPHandler
 from naia_relay.protocols.rlp import RLPHandler
 from naia_relay.protocols.tep import TEPHandler
 from naia_relay.registry import RegistryStore
+from naia_relay.transports import LineJsonFramer
 
 RlpRequester = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 
@@ -58,6 +61,7 @@ class BaseRelayRuntime:
     reconnect_attempts: int = field(init=False)
     last_heartbeat_at: float | None = None
     _requests_drained: asyncio.Event = field(init=False)
+    resolved_listeners: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.logger = logging.getLogger(f"naia_relay.runtime.{self.role}")
@@ -213,6 +217,15 @@ class BaseRelayRuntime:
         if hasattr(self.config, "relay_link") and self.config.relay_link is not None:
             summary["relay_link"] = self.config.relay_link.transport
         return summary
+
+    def readiness_payload(self) -> dict[str, Any]:
+        return {
+            "event": "listener_ready",
+            "role": self.role,
+            "relay_id": self.relay_id,
+            "session_id": self.session_id,
+            "listeners": self.resolved_listeners,
+        }
 
     def record_validation_failure(
         self,
@@ -376,6 +389,8 @@ class HostRelayRuntime(BaseRelayRuntime):
     registry: RegistryStore = field(default_factory=lambda: RegistryStore(mode="authoritative"))
     tep_handler: TEPHandler = field(init=False)
     rlp_handler: RLPHandler = field(init=False)
+    _rlp_server: asyncio.AbstractServer | None = field(default=None, init=False, repr=False)
+    _rlp_framer: LineJsonFramer = field(default_factory=LineJsonFramer, init=False, repr=False)
 
     def __post_init__(self) -> None:
         BaseRelayRuntime.__post_init__(self)
@@ -402,6 +417,15 @@ class HostRelayRuntime(BaseRelayRuntime):
         self.session_manager.add(
             SessionState(session_id=f"{self.session_id}:clients", kind="rlp", peer_id="clients")
         )
+        if self.config.relay_link.transport == "tcp" and self.config.relay_link.bind_port == 0:
+            await self._start_dynamic_rlp_listener()
+
+    async def stop(self) -> None:
+        if self._rlp_server is not None:
+            self._rlp_server.close()
+            await self._rlp_server.wait_closed()
+            self._rlp_server = None
+        await BaseRelayRuntime.stop(self)
 
     async def handle_tep_message(self, message: dict[str, Any]) -> dict[str, Any]:
         self._ensure_started()
@@ -444,6 +468,35 @@ class HostRelayRuntime(BaseRelayRuntime):
 
     async def _rlp_get_prompt(self, payload: Any) -> list[Any]:
         return await self._executor_get_prompt(payload)
+
+    async def _start_dynamic_rlp_listener(self) -> None:
+        bind_host = self.config.relay_link.bind_host or "127.0.0.1"
+
+        async def handle_client(
+            reader: asyncio.StreamReader,
+            writer: asyncio.StreamWriter,
+        ) -> None:
+            try:
+                while True:
+                    line = await reader.readline()
+                    if not line:
+                        break
+                    message = self._rlp_framer.decode(line)
+                    response = await self.handle_rlp_message(message)
+                    writer.write(self._rlp_framer.encode(response))
+                    await writer.drain()
+            finally:
+                writer.close()
+                await writer.wait_closed()
+
+        self._rlp_server = await asyncio.start_server(handle_client, bind_host, 0)
+        sock = self._rlp_server.sockets[0]
+        host, port = sock.getsockname()[:2]
+        self.resolved_listeners["relay_link"] = {
+            "transport": "tcp",
+            "host": host,
+            "port": port,
+        }
 
 
 @dataclass(slots=True)
@@ -757,9 +810,26 @@ def create_runtime(config: RelayAppConfig) -> BaseRelayRuntime:
     raise ConfigurationError(f"Unsupported role: {config.role}")
 
 
-async def run_from_config(config: RelayAppConfig, *, once: bool = True) -> BaseRelayRuntime:
+def write_readiness_file(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_suffix(f"{path.suffix}.tmp")
+    temp_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    temp_path.replace(path)
+
+
+async def run_from_config(
+    config: RelayAppConfig,
+    *,
+    once: bool = True,
+    ready_file: Path | None = None,
+) -> BaseRelayRuntime:
     runtime = create_runtime(config)
     await runtime.start()
+    if ready_file is not None:
+        write_readiness_file(ready_file, runtime.readiness_payload())
     if once:
         await runtime.stop()
     else:

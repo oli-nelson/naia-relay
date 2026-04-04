@@ -65,6 +65,12 @@ Run continuously:
 naia-relay --config-file examples/direct/config.yaml
 ```
 
+Write readiness metadata to a file:
+
+```bash
+naia-relay --config-file examples/neovim-host/config.yaml --ready-file /tmp/naia-relay-ready.json
+```
+
 ## Transport support
 
 ### MCP side
@@ -130,6 +136,18 @@ Use:
 
 This is the short-lived relay started for a Codex session. It uses MCP over
 `stdio` and connects upstream to the long-lived host relay over RLP.
+
+## Readiness file support
+
+Use a readiness file when a parent process needs startup metadata such as a
+dynamically assigned TCP port.
+
+Supported inputs:
+
+- CLI: `--ready-file`
+- environment: `NAIA_RELAY_READY_FILE`
+
+See `doc/readiness-file.md` for the file format.
 
 ## Logging
 

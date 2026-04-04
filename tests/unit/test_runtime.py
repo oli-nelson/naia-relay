@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
 import pytest
 
 from naia_relay.config import load_config
 from naia_relay.errors import ProtocolError
-from naia_relay.runtime import ClientRelayRuntime, HostRelayRuntime, create_runtime
+from naia_relay.runtime import ClientRelayRuntime, HostRelayRuntime, create_runtime, run_from_config
 
 
 def load_inline_config(text: str):
@@ -184,3 +185,43 @@ async def test_shutdown_waits_for_inflight_request_completion() -> None:
     assert runtime.started is False
     assert result is not None
     assert runtime.stats.completed_requests >= 1
+
+
+@pytest.mark.asyncio
+async def test_host_dynamic_listener_writes_readiness_file(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeSocket:
+        def getsockname(self):
+            return ("127.0.0.1", 54321)
+
+    class FakeServer:
+        sockets = [FakeSocket()]
+
+        def close(self) -> None:
+            return None
+
+        async def wait_closed(self) -> None:
+            return None
+
+    async def fake_start_server(handler, host, port):
+        assert host == "127.0.0.1"
+        assert port == 0
+        return FakeServer()
+
+    monkeypatch.setattr(asyncio, "start_server", fake_start_server)
+    ready_file = tmp_path / "ready.json"
+    config = load_inline_config(
+        "role: host\n"
+        "executor:\n  transport: stdio\n"
+        "relay_link:\n  transport: tcp\n  bind_host: 127.0.0.1\n  bind_port: 0\n"
+    )
+
+    runtime = await run_from_config(config, once=True, ready_file=ready_file)
+    payload = json.loads(ready_file.read_text(encoding="utf-8"))
+
+    assert runtime.role == "host"
+    assert payload["event"] == "listener_ready"
+    assert payload["role"] == "host"
+    assert payload["listeners"]["relay_link"]["port"] == 54321

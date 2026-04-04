@@ -20,6 +20,9 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     operator_doc = (REPO_ROOT / "doc" / "operator-guide.md").read_text(encoding="utf-8")
     developer_doc = (REPO_ROOT / "doc" / "developer-guide.md").read_text(encoding="utf-8")
     docs_index = (REPO_ROOT / "doc" / "README.md").read_text(encoding="utf-8")
+    tep_doc = (REPO_ROOT / "doc" / "tep-protocol.md").read_text(encoding="utf-8")
+    rlp_doc = (REPO_ROOT / "doc" / "rlp-protocol.md").read_text(encoding="utf-8")
+    readiness_doc = (REPO_ROOT / "doc" / "readiness-file.md").read_text(encoding="utf-8")
 
     assert "naia-relay --help" in operator_doc
     assert "--config-file" in operator_doc
@@ -28,3 +31,9 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     assert "examples/codex-client/config.yaml" in operator_doc
     assert "tests/integration/" in developer_doc
     assert "SPEC.md" in docs_index
+    assert "register_tools" in tep_doc
+    assert "execute_tool" in tep_doc
+    assert "bind_session" in rlp_doc
+    assert "tool_snapshot" in rlp_doc
+    assert "--ready-file" in operator_doc
+    assert "NAIA_RELAY_READY_FILE" in readiness_doc

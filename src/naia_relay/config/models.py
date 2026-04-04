@@ -50,7 +50,7 @@ class TcpEndpointConfig(NaiaBaseModel):
     host: str | None = None
     port: int | None = Field(default=None, ge=1, le=65535)
     bind_host: str | None = None
-    bind_port: int | None = Field(default=None, ge=1, le=65535)
+    bind_port: int | None = Field(default=None, ge=0, le=65535)
 
     @model_validator(mode="after")
     def validate_transport_requirements(self) -> TcpEndpointConfig:
@@ -72,7 +72,7 @@ class RelayLinkConfig(NaiaBaseModel):
     host: str | None = None
     port: int | None = Field(default=None, ge=1, le=65535)
     bind_host: str | None = None
-    bind_port: int | None = Field(default=None, ge=1, le=65535)
+    bind_port: int | None = Field(default=None, ge=0, le=65535)
 
     @model_validator(mode="after")
     def validate_transport_requirements(self) -> RelayLinkConfig:
