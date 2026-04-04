@@ -21,6 +21,7 @@ class MCPHandler:
     read_resource: ReadResourceCallback | None = None
     get_prompt: GetPromptCallback | None = None
     initialized: bool = False
+    log_level: str = "info"
 
     async def handle_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
         request = JsonRpcRequest.model_validate(message)
@@ -65,7 +66,15 @@ class MCPHandler:
                 arguments = request.params.get("arguments", {})
                 if self.execute_tool is None:
                     return self._error(request.id, -32601, "tools/call not available")
-                result = await self.execute_tool(tool_name, arguments)
+                try:
+                    result = await self.execute_tool(tool_name, arguments)
+                except Exception as exc:
+                    return self._error(
+                        request.id,
+                        -32000,
+                        f"tools/call failed for {tool_name}",
+                        {"exception_type": type(exc).__name__, "detail": str(exc)},
+                    )
                 return self._result(request.id, result)
             case "resources/list":
                 return self._result(
@@ -87,7 +96,15 @@ class MCPHandler:
                 arguments = request.params.get("arguments", {})
                 if self.read_resource is None:
                     return self._error(request.id, -32601, "resources/read not available")
-                contents = await self.read_resource(uri, arguments)
+                try:
+                    contents = await self.read_resource(uri, arguments)
+                except Exception as exc:
+                    return self._error(
+                        request.id,
+                        -32000,
+                        f"resources/read failed for {uri}",
+                        {"exception_type": type(exc).__name__, "detail": str(exc)},
+                    )
                 return self._result(request.id, {"contents": contents})
             case "prompts/list":
                 return self._result(
@@ -108,8 +125,20 @@ class MCPHandler:
                 arguments = request.params.get("arguments", {})
                 if self.get_prompt is None:
                     return self._error(request.id, -32601, "prompts/get not available")
-                messages = await self.get_prompt(name, arguments)
+                try:
+                    messages = await self.get_prompt(name, arguments)
+                except Exception as exc:
+                    return self._error(
+                        request.id,
+                        -32000,
+                        f"prompts/get failed for {name}",
+                        {"exception_type": type(exc).__name__, "detail": str(exc)},
+                    )
                 return self._result(request.id, {"messages": messages})
+            case "logging/setLevel":
+                level = request.params.get("level", "info")
+                self.log_level = str(level)
+                return self._result(request.id, {})
             case "sampling/createMessage" | "roots/list" | "completion/complete":
                 return self._error(
                     request.id,
@@ -118,6 +147,15 @@ class MCPHandler:
                 )
             case _:
                 return self._error(request.id, -32601, f"Method not found: {request.method}")
+
+    def make_log_notification(
+        self, level: str, message: str, data: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        return {
+            "jsonrpc": "2.0",
+            "method": "notifications/message",
+            "params": {"level": level, "data": data or {"message": message}},
+        }
 
     def _result(self, request_id: str | int | None, result: dict[str, Any]) -> dict[str, Any]:
         return {"jsonrpc": "2.0", "id": request_id, "result": result}

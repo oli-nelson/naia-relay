@@ -119,3 +119,19 @@ async def test_tep_over_http_non_streaming_round_trip() -> None:
     )
 
     assert response["payload"]["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_http_transport_stream_round_trip() -> None:
+    async def stream_requester(message: dict[str, object]):
+        yield {"event": "progress", "step": 1}
+        yield {"event": "result", "ok": True}
+
+    adapter = HttpTransportAdapter(
+        HttpTransportConfig(base_url="http://example.invalid"),
+        stream_requester=stream_requester,
+    )
+    await adapter.start()
+    responses = await adapter.stream_round_trip({"hello": "stream"})
+
+    assert responses == [{"event": "progress", "step": 1}, {"event": "result", "ok": True}]

@@ -175,8 +175,8 @@ Goal: implement YAML-based configuration loading, precedence rules, schema valid
 
 - [x] CLI file config loads successfully
 - [x] CLI YAML string loads successfully
-- [ ] Environment file config loads successfully
-- [ ] Environment YAML string loads successfully
+- [x] Environment file config loads successfully
+- [x] Environment YAML string loads successfully
 - [x] CLI source overrides environment source
 - [x] CLI file plus CLI YAML string fails with clear error
 - [x] Environment file plus environment YAML string fails with clear error
@@ -274,7 +274,7 @@ Goal: implement the conservative v1 HTTP transport for MCP and TEP.
 - [x] Implement an HTTP server/client transport abstraction as needed by relay role
 - [x] Support one JSON message per request body
 - [x] Support one JSON message per response body for non-streaming exchanges
-- [ ] Add optional streaming response support if required by selected MCP/TEP flows
+- [x] Add optional streaming response support if required by selected MCP/TEP flows
 - [x] Map HTTP connection failures and timeouts into transport errors
 - [x] Add authorization hooks/config placeholders for MCP-over-HTTP
 - [x] Explicitly block HTTP configuration for RLP
@@ -435,7 +435,7 @@ Goal: implement the MCP-facing behavior required by the spec, backed by direct o
 - [x] Implement explicit unsupported-feature responses for sampling in v1
 - [x] Implement explicit unsupported-feature responses for roots in v1 unless required by the SDK baseline
 - [x] Implement explicit unsupported-feature responses for completions in v1 unless required by the SDK baseline
-- [ ] Implement logging utility support if required by the selected SDK or peer role
+- [x] Implement logging utility support if required by the selected SDK or peer role
 - [x] Map direct-mode MCP operations to TEP-backed authoritative state
 - [x] Map client-relay MCP operations to RLP-backed mirrored/forwarded state
 - [x] Ensure MCP-facing behavior hides underlying relay topology from the client
@@ -454,7 +454,7 @@ Goal: implement the MCP-facing behavior required by the spec, backed by direct o
 - [x] Unsupported roots request fails explicitly if roots remain out of scope
 - [x] Unsupported completions request fails explicitly if completions remain out of scope
 - [x] Tool/resource/prompt changes are reflected in subsequent MCP discovery
-- [ ] MCP error mapping preserves useful structured details
+- [x] MCP error mapping preserves useful structured details
 
 ### Definition of done
 

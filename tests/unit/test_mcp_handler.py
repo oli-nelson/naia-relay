@@ -116,6 +116,40 @@ async def test_mcp_unsupported_features_fail_explicitly() -> None:
 
 
 @pytest.mark.asyncio
+async def test_mcp_logging_set_level_and_notification_helper() -> None:
+    handler = MCPHandler(registry=build_registry())
+
+    response = await handler.handle_message(
+        {"jsonrpc": "2.0", "id": 1, "method": "logging/setLevel", "params": {"level": "debug"}}
+    )
+    notification = handler.make_log_notification("debug", "hello", {"message": "hello"})
+
+    assert response["result"] == {}
+    assert handler.log_level == "debug"
+    assert notification["method"] == "notifications/message"
+
+
+@pytest.mark.asyncio
+async def test_mcp_error_mapping_preserves_structured_details() -> None:
+    async def execute_tool(name: str, arguments: dict[str, object]) -> dict[str, object]:
+        raise RuntimeError("boom")
+
+    handler = MCPHandler(registry=build_registry(), execute_tool=execute_tool)
+
+    response = await handler.handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {"name": "demo", "arguments": {}},
+        }
+    )
+
+    assert response["error"]["code"] == -32000
+    assert response["error"]["data"]["exception_type"] == "RuntimeError"
+
+
+@pytest.mark.asyncio
 async def test_mcp_discovery_reflects_registry_changes() -> None:
     registry = build_registry()
     handler = MCPHandler(registry=registry)
