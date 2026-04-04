@@ -8,3 +8,7 @@ class ConfigurationError(NaiaRelayError):
 
 class TransportError(NaiaRelayError):
     """Raised when transport operations fail."""
+
+
+class ProtocolError(NaiaRelayError):
+    """Raised when protocol operations fail."""

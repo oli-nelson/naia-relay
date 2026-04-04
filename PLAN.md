@@ -11,33 +11,33 @@ These choices should be treated as the default build target unless a later phase
 ### Python version
 
 - [ ] Target Python `3.12` as the primary runtime version
-- [ ] Keep the code compatible with Python `3.11+` unless a dependency forces a narrower range
+- [x] Keep the code compatible with Python `3.11+` unless a dependency forces a narrower range
 
 ### Recommended Python modules and libraries
 
 Core runtime:
 
-- [ ] `asyncio` for concurrency and task orchestration
-- [ ] `typing` / `dataclasses` or `pydantic` models for typed internal structures
-- [ ] `json` for protocol encoding/decoding
-- [ ] `logging` for structured log integration
-- [ ] `uuid` for message/session/request identifiers
-- [ ] `pathlib` for filesystem-safe path handling
-- [ ] `argparse` or `typer` for the CLI
+- [x] `asyncio` for concurrency and task orchestration
+- [x] `typing` / `dataclasses` or `pydantic` models for typed internal structures
+- [x] `json` for protocol encoding/decoding
+- [x] `logging` for structured log integration
+- [x] `uuid` for message/session/request identifiers
+- [x] `pathlib` for filesystem-safe path handling
+- [x] `argparse` or `typer` for the CLI
 
 Recommended third-party dependencies:
 
-- [ ] `pydantic` for config and protocol validation
-- [ ] `PyYAML` for YAML parsing
+- [x] `pydantic` for config and protocol validation
+- [x] `PyYAML` for YAML parsing
 - [ ] an MCP Python SDK or equivalent MCP implementation library chosen during Phase 7
-- [ ] an async HTTP library such as `aiohttp` or `httpx` + an ASGI/HTTP server stack for HTTP transport
-- [ ] `pytest` for tests
-- [ ] `pytest-asyncio` for async test coverage
+- [x] an async HTTP library such as `aiohttp` or `httpx` + an ASGI/HTTP server stack for HTTP transport
+- [x] `pytest` for tests
+- [x] `pytest-asyncio` for async test coverage
 
 Optional but recommended developer tooling:
 
-- [ ] `ruff` for linting and formatting
-- [ ] `mypy` for static type checking
+- [x] `ruff` for linting and formatting
+- [x] `mypy` for static type checking
 
 ### Recommended project folder structure
 
@@ -77,11 +77,11 @@ naia-relay/
 
 Structure rules:
 
-- [ ] Use a `src/` layout
-- [ ] Keep protocol handlers separate from transport adapters
-- [ ] Keep config models separate from runtime wiring
-- [ ] Keep unit, integration, and end-to-end tests in separate directories
-- [ ] Put runnable example YAML configs under `examples/`
+- [x] Use a `src/` layout
+- [x] Keep protocol handlers separate from transport adapters
+- [x] Keep config models separate from runtime wiring
+- [x] Keep unit, integration, and end-to-end tests in separate directories
+- [x] Put runnable example YAML configs under `examples/`
 
 ### Global installation and executable strategy
 
@@ -89,10 +89,10 @@ The user should be able to install a globally invokable `naia-relay` executable.
 
 Recommended packaging outcome:
 
-- [ ] Publish a console script entrypoint named `naia-relay`
-- [ ] Ensure `pip install .` provides the `naia-relay` command in the active environment
+- [x] Publish a console script entrypoint named `naia-relay`
+- [x] Ensure `pip install .` provides the `naia-relay` command in the active environment
 - [ ] Ensure `pipx install .` works for isolated global-style installation during development
-- [ ] Ensure editable install mode `pip install -e .` works for local iteration
+- [x] Ensure editable install mode `pip install -e .` works for local iteration
 
 Recommended user installation guidance to document later:
 
@@ -109,9 +109,9 @@ pip install -e ".[dev]"
 
 Packaging requirements:
 
-- [ ] `pyproject.toml` defines the console script entrypoint
-- [ ] optional dependency groups exist for development tooling
-- [ ] the install path does not require users to run the package as `python -m naia_relay`
+- [x] `pyproject.toml` defines the console script entrypoint
+- [x] optional dependency groups exist for development tooling
+- [x] the install path does not require users to run the package as `python -m naia_relay`
 
 Execution rules for this plan:
 
@@ -128,27 +128,27 @@ Goal: create the Python project skeleton, base tooling, and test harness so all 
 
 ### Tasks
 
-- [ ] Create the Python package layout for `naia_relay`
-- [ ] Add packaging metadata and dependency management configuration
-- [ ] Add a CLI entrypoint for `naia-relay`
-- [ ] Add a test runner configuration
-- [ ] Add linting and formatting configuration
-- [ ] Add a minimal logging setup usable from the CLI
-- [ ] Add base exception types and shared utility modules
-- [ ] Add CI-ready test command(s) documented in the repo
+- [x] Create the Python package layout for `naia_relay`
+- [x] Add packaging metadata and dependency management configuration
+- [x] Add a CLI entrypoint for `naia-relay`
+- [x] Add a test runner configuration
+- [x] Add linting and formatting configuration
+- [x] Add a minimal logging setup usable from the CLI
+- [x] Add base exception types and shared utility modules
+- [x] Add CI-ready test command(s) documented in the repo
 
 ### Test requirements
 
-- [ ] Project installs in a fresh environment
-- [ ] CLI entrypoint runs and exits successfully with `--help`
-- [ ] Test runner executes at least one placeholder smoke test
-- [ ] Lint and formatting commands run successfully on the initial scaffold
+- [x] Project installs in a fresh environment
+- [x] CLI entrypoint runs and exits successfully with `--help`
+- [x] Test runner executes at least one placeholder smoke test
+- [x] Lint and formatting commands run successfully on the initial scaffold
 
 ### Definition of done
 
-- [ ] Repo contains a clean Python application skeleton for the relay
-- [ ] A developer or agent can run tests locally with one documented command
-- [ ] Future phases can add modules without restructuring the project
+- [x] Repo contains a clean Python application skeleton for the relay
+- [x] A developer or agent can run tests locally with one documented command
+- [x] Future phases can add modules without restructuring the project
 
 ---
 
@@ -158,39 +158,39 @@ Goal: implement YAML-based configuration loading, precedence rules, schema valid
 
 ### Tasks
 
-- [ ] Implement config loading from `--config-file`
-- [ ] Implement config loading from `--config-yaml`
-- [ ] Implement config loading from `NAIA_RELAY_CONFIG_FILE`
-- [ ] Implement config loading from `NAIA_RELAY_CONFIG_YAML`
-- [ ] Enforce mutual exclusivity between file-path and inline-YAML sources
-- [ ] Enforce CLI-over-environment precedence
-- [ ] Fail fast when no supported config source is provided
-- [ ] Define typed config models for `direct`, `host`, and `client` roles
-- [ ] Implement role-specific validation for required and forbidden sections
-- [ ] Enforce protocol-specific transport restrictions, especially RLP `stdio|tcp` only
-- [ ] Add config normalization for transport defaults, host defaults, and timeout defaults
-- [ ] Add human-readable configuration error messages
+- [x] Implement config loading from `--config-file`
+- [x] Implement config loading from `--config-yaml`
+- [x] Implement config loading from `NAIA_RELAY_CONFIG_FILE`
+- [x] Implement config loading from `NAIA_RELAY_CONFIG_YAML`
+- [x] Enforce mutual exclusivity between file-path and inline-YAML sources
+- [x] Enforce CLI-over-environment precedence
+- [x] Fail fast when no supported config source is provided
+- [x] Define typed config models for `direct`, `host`, and `client` roles
+- [x] Implement role-specific validation for required and forbidden sections
+- [x] Enforce protocol-specific transport restrictions, especially RLP `stdio|tcp` only
+- [x] Add config normalization for transport defaults, host defaults, and timeout defaults
+- [x] Add human-readable configuration error messages
 
 ### Test requirements
 
-- [ ] CLI file config loads successfully
-- [ ] CLI YAML string loads successfully
+- [x] CLI file config loads successfully
+- [x] CLI YAML string loads successfully
 - [ ] Environment file config loads successfully
 - [ ] Environment YAML string loads successfully
-- [ ] CLI source overrides environment source
-- [ ] CLI file plus CLI YAML string fails with clear error
-- [ ] Environment file plus environment YAML string fails with clear error
-- [ ] Missing config source fails with clear error
-- [ ] `role: direct` rejects missing `mcp` or `executor`
-- [ ] `role: host` rejects missing `executor` or `relay_link`
-- [ ] `role: client` rejects missing `mcp` or `relay_link`
-- [ ] RLP over HTTP is rejected
+- [x] CLI source overrides environment source
+- [x] CLI file plus CLI YAML string fails with clear error
+- [x] Environment file plus environment YAML string fails with clear error
+- [x] Missing config source fails with clear error
+- [x] `role: direct` rejects missing `mcp` or `executor`
+- [x] `role: host` rejects missing `executor` or `relay_link`
+- [x] `role: client` rejects missing `mcp` or `relay_link`
+- [x] RLP over HTTP is rejected
 
 ### Definition of done
 
-- [ ] Relay startup is fully driven by validated YAML config
-- [ ] Role and transport validation rules match the spec
-- [ ] Config failures are deterministic and easy to diagnose
+- [x] Relay startup is fully driven by validated YAML config
+- [x] Role and transport validation rules match the spec
+- [x] Config failures are deterministic and easy to diagnose
 
 ---
 
@@ -200,35 +200,35 @@ Goal: implement the transport-independent runtime foundation used by every proto
 
 ### Tasks
 
-- [ ] Define shared message model primitives for correlation IDs, session IDs, relay IDs, and revisions
-- [ ] Implement a session manager for MCP, TEP, and RLP session state
-- [ ] Implement a request tracker for in-flight request/response correlation
-- [ ] Implement an execution tracker for in-flight tool execution lifecycle
-- [ ] Implement a unified registry model for tools, resources, and prompts
-- [ ] Support authoritative and mirrored registry modes
-- [ ] Add registry revision tracking for bridged synchronization
-- [ ] Implement name/URI uniqueness validation rules
-- [ ] Add shared error model types for protocol, validation, transport, timeout, and runtime errors
-- [ ] Add serialization helpers shared across protocols
+- [x] Define shared message model primitives for correlation IDs, session IDs, relay IDs, and revisions
+- [x] Implement a session manager for MCP, TEP, and RLP session state
+- [x] Implement a request tracker for in-flight request/response correlation
+- [x] Implement an execution tracker for in-flight tool execution lifecycle
+- [x] Implement a unified registry model for tools, resources, and prompts
+- [x] Support authoritative and mirrored registry modes
+- [x] Add registry revision tracking for bridged synchronization
+- [x] Implement name/URI uniqueness validation rules
+- [x] Add shared error model types for protocol, validation, transport, timeout, and runtime errors
+- [x] Add serialization helpers shared across protocols
 
 ### Test requirements
 
-- [ ] Session IDs and correlation IDs are generated and tracked correctly
-- [ ] In-flight request correlation works for concurrent requests
-- [ ] Tool registration updates authoritative registry state correctly
-- [ ] Resource registration updates authoritative registry state correctly
-- [ ] Prompt registration updates authoritative registry state correctly
-- [ ] Mirrored registry rebuild from snapshot works correctly
-- [ ] Duplicate tool names are rejected
-- [ ] Duplicate resource URIs are rejected
-- [ ] Duplicate prompt names are rejected
-- [ ] Registry revision increments correctly after each mutation
+- [x] Session IDs and correlation IDs are generated and tracked correctly
+- [x] In-flight request correlation works for concurrent requests
+- [x] Tool registration updates authoritative registry state correctly
+- [x] Resource registration updates authoritative registry state correctly
+- [x] Prompt registration updates authoritative registry state correctly
+- [x] Mirrored registry rebuild from snapshot works correctly
+- [x] Duplicate tool names are rejected
+- [x] Duplicate resource URIs are rejected
+- [x] Duplicate prompt names are rejected
+- [x] Registry revision increments correctly after each mutation
 
 ### Definition of done
 
-- [ ] Core runtime state exists independently of transports and protocol handlers
-- [ ] The registry model supports tools, resources, and prompts
-- [ ] Later protocol layers can rely on stable shared primitives
+- [x] Core runtime state exists independently of transports and protocol handlers
+- [x] The registry model supports tools, resources, and prompts
+- [x] Later protocol layers can rely on stable shared primitives
 
 ---
 
@@ -238,30 +238,30 @@ Goal: implement the common transport adapter interface and the v1 transports tha
 
 ### Tasks
 
-- [ ] Define the internal transport adapter interface
-- [ ] Implement a framing layer for UTF-8 newline-delimited JSON
-- [ ] Implement the stdio adapter
-- [ ] Ensure stdout is reserved for protocol traffic and logs go elsewhere
-- [ ] Implement the TCP adapter with loopback-safe defaults
-- [ ] Implement connection lifecycle hooks for open, close, and failure states
-- [ ] Implement configurable max message size enforcement
-- [ ] Implement malformed frame rejection behavior
-- [ ] Expose transport connection metadata to higher layers
+- [x] Define the internal transport adapter interface
+- [x] Implement a framing layer for UTF-8 newline-delimited JSON
+- [x] Implement the stdio adapter
+- [x] Ensure stdout is reserved for protocol traffic and logs go elsewhere
+- [x] Implement the TCP adapter with loopback-safe defaults
+- [x] Implement connection lifecycle hooks for open, close, and failure states
+- [x] Implement configurable max message size enforcement
+- [x] Implement malformed frame rejection behavior
+- [x] Expose transport connection metadata to higher layers
 
 ### Test requirements
 
-- [ ] stdio adapter can send and receive framed JSON messages
-- [ ] TCP adapter can send and receive framed JSON messages
-- [ ] Oversized frames are rejected cleanly
-- [ ] Malformed JSON frames are rejected cleanly
-- [ ] stdio logging does not corrupt stdout protocol traffic
-- [ ] TCP adapter handles peer disconnects without crashing the process
+- [x] stdio adapter can send and receive framed JSON messages
+- [x] TCP adapter can send and receive framed JSON messages
+- [x] Oversized frames are rejected cleanly
+- [x] Malformed JSON frames are rejected cleanly
+- [x] stdio logging does not corrupt stdout protocol traffic
+- [x] TCP adapter handles peer disconnects without crashing the process
 
 ### Definition of done
 
-- [ ] A transport-agnostic protocol handler can run on top of stdio or TCP
-- [ ] v1 framing behavior matches the spec exactly
-- [ ] Adapter failures surface as structured errors
+- [x] A transport-agnostic protocol handler can run on top of stdio or TCP
+- [x] v1 framing behavior matches the spec exactly
+- [x] Adapter failures surface as structured errors
 
 ---
 
@@ -271,21 +271,21 @@ Goal: implement the conservative v1 HTTP transport for MCP and TEP.
 
 ### Tasks
 
-- [ ] Implement an HTTP server/client transport abstraction as needed by relay role
-- [ ] Support one JSON message per request body
-- [ ] Support one JSON message per response body for non-streaming exchanges
+- [x] Implement an HTTP server/client transport abstraction as needed by relay role
+- [x] Support one JSON message per request body
+- [x] Support one JSON message per response body for non-streaming exchanges
 - [ ] Add optional streaming response support if required by selected MCP/TEP flows
-- [ ] Map HTTP connection failures and timeouts into transport errors
-- [ ] Add authorization hooks/config placeholders for MCP-over-HTTP
-- [ ] Explicitly block HTTP configuration for RLP
+- [x] Map HTTP connection failures and timeouts into transport errors
+- [x] Add authorization hooks/config placeholders for MCP-over-HTTP
+- [x] Explicitly block HTTP configuration for RLP
 
 ### Test requirements
 
 - [ ] MCP-over-HTTP request/response flow works for a non-streaming operation
 - [ ] TEP-over-HTTP request/response flow works for a non-streaming operation
-- [ ] Invalid HTTP payloads fail cleanly
+- [x] Invalid HTTP payloads fail cleanly
 - [ ] HTTP timeout behavior is surfaced correctly
-- [ ] RLP configured with HTTP fails validation
+- [x] RLP configured with HTTP fails validation
 
 ### Definition of done
 
@@ -301,44 +301,44 @@ Goal: implement the full v1 Tool Executor Protocol, including tools, resources, 
 
 ### Tasks
 
-- [ ] Implement TEP envelope parsing and validation
-- [ ] Implement TEP message classification: request, response, event
-- [ ] Implement `register_executor`
-- [ ] Implement `register_tools`
-- [ ] Implement `deregister_tools`
-- [ ] Implement `register_resources`
-- [ ] Implement `deregister_resources`
-- [ ] Implement `read_resource`
+- [x] Implement TEP envelope parsing and validation
+- [x] Implement TEP message classification: request, response, event
+- [x] Implement `register_executor`
+- [x] Implement `register_tools`
+- [x] Implement `deregister_tools`
+- [x] Implement `register_resources`
+- [x] Implement `deregister_resources`
+- [x] Implement `read_resource`
 - [ ] Implement `resource_result`
-- [ ] Implement `register_prompts`
-- [ ] Implement `deregister_prompts`
-- [ ] Implement `get_prompt`
+- [x] Implement `register_prompts`
+- [x] Implement `deregister_prompts`
+- [x] Implement `get_prompt`
 - [ ] Implement `prompt_result`
-- [ ] Implement `execute_tool`
+- [x] Implement `execute_tool`
 - [ ] Implement `execution_progress`
 - [ ] Implement `execution_result`
 - [ ] Implement `execution_error`
-- [ ] Implement `heartbeat`
-- [ ] Implement `shutdown` / `disconnect_notice`
-- [ ] Map TEP operations into authoritative registry mutations and executor actions
-- [ ] Enforce TEP validation and structured error responses
-- [ ] Implement TEP protocol version checks
+- [x] Implement `heartbeat`
+- [x] Implement `shutdown` / `disconnect_notice`
+- [x] Map TEP operations into authoritative registry mutations and executor actions
+- [x] Enforce TEP validation and structured error responses
+- [x] Implement TEP protocol version checks
 
 ### Test requirements
 
-- [ ] Valid TEP envelope is accepted
-- [ ] Invalid TEP envelope is rejected
+- [x] Valid TEP envelope is accepted
+- [x] Invalid TEP envelope is rejected
 - [ ] Executor registration succeeds
-- [ ] Tool registration and deregistration succeed
-- [ ] Resource registration and deregistration succeed
-- [ ] Prompt registration and deregistration succeed
-- [ ] Resource read request/response succeeds
-- [ ] Prompt retrieval request/response succeeds
+- [x] Tool registration and deregistration succeed
+- [x] Resource registration and deregistration succeed
+- [x] Prompt registration and deregistration succeed
+- [x] Resource read request/response succeeds
+- [x] Prompt retrieval request/response succeeds
 - [ ] Tool execution request/progress/result succeeds
 - [ ] Tool execution error is returned in correct structure
 - [ ] Duplicate registrations fail as expected
-- [ ] Unsupported version fails cleanly
-- [ ] Heartbeat handling works
+- [x] Unsupported version fails cleanly
+- [x] Heartbeat handling works
 - [ ] Disconnect notice updates executor availability state correctly
 
 ### Definition of done
@@ -355,61 +355,61 @@ Goal: implement the full v1 Relay Link Protocol for host/client relay bridging a
 
 ### Tasks
 
-- [ ] Implement RLP envelope parsing and validation
-- [ ] Implement RLP message classification: request, response, event
-- [ ] Implement `hello` / `handshake`
-- [ ] Implement `bind_session`
-- [ ] Implement session/token verification rules
-- [ ] Implement `tool_snapshot`
+- [x] Implement RLP envelope parsing and validation
+- [x] Implement RLP message classification: request, response, event
+- [x] Implement `hello` / `handshake`
+- [x] Implement `bind_session`
+- [x] Implement session/token verification rules
+- [x] Implement `tool_snapshot`
 - [ ] Implement `tool_added`
 - [ ] Implement `tool_removed`
 - [ ] Implement `tool_updated`
-- [ ] Implement `resource_snapshot`
+- [x] Implement `resource_snapshot`
 - [ ] Implement `resource_added`
 - [ ] Implement `resource_removed`
 - [ ] Implement `resource_updated`
-- [ ] Implement `prompt_snapshot`
+- [x] Implement `prompt_snapshot`
 - [ ] Implement `prompt_added`
 - [ ] Implement `prompt_removed`
 - [ ] Implement `prompt_updated`
-- [ ] Implement `read_resource`
+- [x] Implement `read_resource`
 - [ ] Implement `resource_result`
-- [ ] Implement `get_prompt`
+- [x] Implement `get_prompt`
 - [ ] Implement `prompt_result`
-- [ ] Implement `execute_tool`
+- [x] Implement `execute_tool`
 - [ ] Implement `execution_progress`
 - [ ] Implement `execution_result`
 - [ ] Implement `execution_error`
-- [ ] Implement `heartbeat`
-- [ ] Implement `disconnect_notice`
-- [ ] Implement initial full snapshot on successful bind
+- [x] Implement `heartbeat`
+- [x] Implement `disconnect_notice`
+- [x] Implement initial full snapshot on successful bind
 - [ ] Implement incremental mirrored registry updates
 - [ ] Implement reconnect and resynchronization behavior
 - [ ] Implement revision-gap detection and forced resnapshot behavior
-- [ ] Implement support for one host relay serving multiple client relays
-- [ ] Implement RLP protocol version checks
+- [x] Implement support for one host relay serving multiple client relays
+- [x] Implement RLP protocol version checks
 
 ### Test requirements
 
-- [ ] Valid RLP envelope is accepted
-- [ ] Invalid RLP envelope is rejected
+- [x] Valid RLP envelope is accepted
+- [x] Invalid RLP envelope is rejected
 - [ ] Host/client handshake succeeds
-- [ ] Session bind succeeds for correct session ID
+- [x] Session bind succeeds for correct session ID
 - [ ] Session bind fails for unknown session ID
-- [ ] Session bind fails for invalid token when token is required
-- [ ] Initial `tool_snapshot` syncs correctly
+- [x] Session bind fails for invalid token when token is required
+- [x] Initial `tool_snapshot` syncs correctly
 - [ ] Resource snapshot syncs correctly
 - [ ] Prompt snapshot syncs correctly
 - [ ] Incremental tool updates sync correctly
 - [ ] Incremental resource updates sync correctly
 - [ ] Incremental prompt updates sync correctly
-- [ ] Tool execution forwarding works end to end over RLP
-- [ ] Resource read forwarding works end to end over RLP
-- [ ] Prompt retrieval forwarding works end to end over RLP
+- [x] Tool execution forwarding works end to end over RLP
+- [x] Resource read forwarding works end to end over RLP
+- [x] Prompt retrieval forwarding works end to end over RLP
 - [ ] RLP reconnect causes stale mirror invalidation
 - [ ] Fresh snapshot rebuild after reconnect works
 - [ ] Revision-gap detection triggers full resync
-- [ ] One host relay can serve multiple client relays concurrently
+- [x] One host relay can serve multiple client relays concurrently
 
 ### Definition of done
 
@@ -643,7 +643,7 @@ Goal: prepare the repo for sustained iteration after the first implementation la
 
 ## Suggested milestone checkpoints
 
-- [ ] Milestone A complete: Phases 0–3
+- [x] Milestone A complete: Phases 0–3
 - [ ] Milestone B complete: Phases 4–6
 - [ ] Milestone C complete: Phases 7–9
 - [ ] Milestone D complete: Phases 10–12
