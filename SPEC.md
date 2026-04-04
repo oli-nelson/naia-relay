@@ -65,9 +65,10 @@ The first version does not need to:
    Protocol messages are defined once and must behave identically regardless of whether they travel over stdio, TCP, or HTTP.
 
 2. **Protocol separation**  
-   The relay handles two protocols:
+   The relay handles three protocols:
    - **MCP** for agent-facing communication
    - **Tool Executor Protocol (TEP)** for executor-facing communication
+   - **Relay Link Protocol (RLP)** for relay-to-relay communication
 
 3. **Adapter-based architecture**  
    Every transport is implemented as a transport adapter behind a common interface.
@@ -207,12 +208,51 @@ The relay must implement MCP as defined by the Anthropic specification for the r
 
 At minimum, the relay design must support:
 
-- initialization / capability negotiation
-- tool discovery/listing
-- tool invocation
+- JSON-RPC 2.0 message structure and semantics used by MCP
+- lifecycle management, including initialization, capability negotiation, and connection/session termination
+- tools, including discovery and invocation flows
+- resources, including discovery and retrieval flows
+- prompts, including discovery and retrieval flows
 - notifications and request/response flows defined by MCP
 - error propagation in MCP-compatible form
 - any other mandatory MCP features required for compliance
+
+Because this specification intends `naia-relay` to implement the MCP core feature set rather than a tools-only subset, the relay should explicitly account for the main MCP feature groups described by the MCP specification:
+
+- **Base protocol** built on JSON-RPC 2.0
+- **Lifecycle management**
+- **Server features**, including tools, resources, and prompts
+- **Client features** where applicable to the relay role, including roots and sampling
+- **Utilities** where applicable to the relay role, such as logging and argument completion
+
+For avoidance of doubt:
+
+- when `naia-relay` is acting as the MCP server-facing peer for Codex or another MCP client, it must correctly implement the server-side behavior for the MCP core features it exposes
+- if the chosen MCP topology requires client-side MCP responsibilities on another side of the relay in a future version, those responsibilities must also follow the MCP specification rather than ad hoc relay-specific behavior
+
+### MCP v1 feature coverage
+
+The v1 implementation must define explicit behavior for the main MCP feature groups.
+
+Required v1 support:
+
+- **Base protocol / lifecycle**: full support
+- **Tools**: full support
+- **Resources**: full support
+- **Prompts**: full support
+- **Logging utility**: support if required by the MCP peer role and SDK behavior
+
+Deferred from v1 unless later promoted:
+
+- **Sampling**: not implemented in v1; requests must fail with a clear MCP-compatible unsupported-feature error if encountered
+- **Roots**: not implemented in v1 unless required by the selected MCP SDK for baseline interoperability; if not implemented, requests must fail with a clear MCP-compatible unsupported-feature error
+- **Completions / argument completion**: not implemented in v1 unless required for baseline interoperability; if not implemented, requests must fail with a clear MCP-compatible unsupported-feature error
+
+Relay mapping rules for v1:
+
+- tools registered through TEP and mirrored through RLP must be exposed through MCP tools
+- resources and prompts must be represented in the relay's internal registry model, not treated as out-of-band exceptions
+- if a feature is unsupported in v1, the relay must fail explicitly rather than silently ignoring the request
 
 ### MCP behavior requirement
 
@@ -226,6 +266,19 @@ The client must not need to know:
 
 Where this specification is silent, the Anthropic MCP specification is authoritative for MCP semantics.
 
+The implementation phase should treat the official MCP specification and architecture documentation as the source of truth for:
+
+- required lifecycle behavior
+- capability negotiation rules
+- primitive semantics for tools, resources, and prompts
+- client/server feature boundaries
+- transport-layer requirements relevant to supported MCP transports
+
+Official MCP references:
+
+- MCP concepts / architecture overview: https://modelcontextprotocol.io/docs/concepts/architecture
+- MCP specification architecture page: https://modelcontextprotocol.io/specification/2025-06-18/architecture
+
 ## 6.2 Tool Executor Protocol (TEP)
 
 The Tool Executor Protocol is a custom protocol between the relay and one or more Tool Executors.
@@ -234,7 +287,11 @@ Its responsibilities are:
 
 - executor identification / registration
 - tool registration and deregistration
+- resource registration and deregistration
+- prompt registration and deregistration
 - tool execution requests
+- resource read requests
+- prompt retrieval requests
 - tool execution progress and completion
 - error reporting
 - heartbeat / liveness signaling
@@ -265,8 +322,14 @@ Its responsibilities are:
 - protocol version negotiation
 - session binding between a client relay and a host relay
 - tool registry snapshot delivery
+- resource registry snapshot delivery
+- prompt registry snapshot delivery
 - tool added / removed / updated propagation
+- resource added / removed / updated propagation
+- prompt added / removed / updated propagation
 - relayed tool execution requests
+- relayed resource read requests
+- relayed prompt retrieval requests
 - relayed progress, result, and error delivery
 - disconnect and liveness handling
 
@@ -377,6 +440,7 @@ The HTTP adapter must:
 - support request/response transport of protocol messages
 - define how bidirectional semantics are handled over HTTP
 - preserve protocol-level correlation and ordering guarantees where required
+- account for MCP transport-layer requirements such as authorization if HTTP is used for MCP
 
 Because HTTP is not inherently symmetric in the same way as stdio or TCP, the implementation must define a concrete relay model, for example:
 
@@ -387,6 +451,33 @@ Because HTTP is not inherently symmetric in the same way as stdio or TCP, the im
 - WebSocket-like upgrade in a future adapter, if desired
 
 The exact HTTP transport mechanics may evolve, but they must remain a transport concern, not a protocol concern.
+
+### HTTP transport behavior for v1
+
+The v1 implementation must use a conservative HTTP model:
+
+- one JSON protocol message per HTTP request body
+- one JSON protocol message per HTTP response body for non-streaming exchanges
+- HTTP transport support is allowed for MCP and TEP
+- HTTP transport is not allowed for RLP in v1
+
+Bidirectional and asynchronous behavior over HTTP in v1 should use one of these explicitly implemented patterns:
+
+- request/response only for operations that naturally fit a single exchange
+- streaming HTTP responses for server-to-client incremental delivery where needed
+- SSE may be used for server-to-client event streaming if chosen during implementation
+
+Deferred from v1:
+
+- WebSocket transport
+- arbitrary bidirectional multiplexing over a single HTTP connection
+- HTTP support for RLP
+
+If streaming HTTP is implemented in v1, the implementation plan must define:
+
+- which MCP or TEP messages may stream
+- how request and execution correlation IDs are preserved
+- how disconnect and timeout behavior maps onto HTTP connection closure
 
 ## 7.6 Future Transport Extensibility
 
@@ -527,6 +618,23 @@ Tool definition should include at least:
 - optional output schema
 - optional metadata/capabilities
 
+The executor-facing model must also support MCP resources and prompts in v1.
+
+### Resource definition should include at least:
+
+- stable resource URI
+- human-readable name or title
+- optional description
+- MIME type where applicable
+- metadata/capabilities
+
+### Prompt definition should include at least:
+
+- stable prompt name
+- human-readable description
+- argument schema or argument definitions where applicable
+- metadata/capabilities
+
 ## 9.3 Tool visibility
 
 The relay exposes the current set of registered tools to the MCP client as MCP tools.
@@ -593,6 +701,20 @@ In-flight execution behavior:
 4. Relay validates and stores tool definitions.
 5. Relay makes those tools available through MCP tool discovery.
 
+## 10.1.1 Resource registration flow
+
+1. Tool Executor connects via configured transport.
+2. Tool Executor registers one or more resources.
+3. Relay validates and stores resource definitions.
+4. Relay makes those resources available through MCP resource discovery.
+
+## 10.1.2 Prompt registration flow
+
+1. Tool Executor connects via configured transport.
+2. Tool Executor registers one or more prompts.
+3. Relay validates and stores prompt definitions.
+4. Relay makes those prompts available through MCP prompt discovery.
+
 ## 10.2 Tool invocation flow
 
 1. MCP client invokes a tool through MCP.
@@ -616,6 +738,24 @@ In bridged mode:
 7. Tool Executor returns progress, result, or error to the host relay.
 8. Host relay forwards the outcome to the client relay over RLP.
 9. Client relay maps the outcome back into MCP response semantics.
+
+## 10.2.2 Resource read flow
+
+1. MCP client requests a resource through MCP.
+2. Relay validates that the resource exists and is available.
+3. Relay creates a correlated read request.
+4. In direct mode, relay forwards the read request to the owning executor over TEP.
+5. In bridged mode, client relay forwards the read request to host relay over RLP, then host relay forwards it to the executor over TEP.
+6. The returned resource payload is mapped back into MCP response semantics.
+
+## 10.2.3 Prompt retrieval flow
+
+1. MCP client requests a prompt through MCP.
+2. Relay validates that the prompt exists and is available.
+3. Relay creates a correlated prompt request.
+4. In direct mode, relay forwards the prompt request to the owning executor over TEP.
+5. In bridged mode, client relay forwards the prompt request to host relay over RLP, then host relay forwards it to the executor over TEP.
+6. The returned prompt payload is mapped back into MCP response semantics.
 
 ## 10.3 Error flow
 
@@ -643,12 +783,20 @@ TEP must support at least:
 1. `register_executor`
 2. `register_tools`
 3. `deregister_tools`
-4. `execute_tool`
-5. `execution_progress`
-6. `execution_result`
-7. `execution_error`
-8. `heartbeat`
-9. `shutdown` or `disconnect_notice`
+4. `register_resources`
+5. `deregister_resources`
+6. `read_resource`
+7. `resource_result`
+8. `register_prompts`
+9. `deregister_prompts`
+10. `get_prompt`
+11. `prompt_result`
+12. `execute_tool`
+13. `execution_progress`
+14. `execution_result`
+15. `execution_error`
+16. `heartbeat`
+17. `shutdown` or `disconnect_notice`
 
 ## 11.1.1 TEP v1 envelope
 
@@ -683,6 +831,14 @@ Required classification:
 - `register_executor`: request
 - `register_tools`: request
 - `deregister_tools`: request
+- `register_resources`: request
+- `deregister_resources`: request
+- `read_resource`: request
+- `resource_result`: response
+- `register_prompts`: request
+- `deregister_prompts`: request
+- `get_prompt`: request
+- `prompt_result`: response
 - `execute_tool`: request
 - `execution_progress`: event
 - `execution_result`: response or terminal event correlated by `execution_id`
@@ -702,6 +858,215 @@ Error payloads must include:
 - `code`: machine-readable error code
 - `message`: human-readable error description
 - optional `details`: structured object
+
+## 11.1.4 TEP v1 payload schemas
+
+The following payload structures are required in TEP v1.
+
+### `register_executor`
+
+```json
+{
+  "executor_id": "string",
+  "display_name": "string",
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": true
+  },
+  "metadata": {}
+}
+```
+
+Rules:
+
+- `executor_id` is required and stable for the lifetime of the executor session
+- `capabilities` keys may be extended in future versions
+
+### `register_tools`
+
+```json
+{
+  "tools": [
+    {
+      "name": "string",
+      "title": "string",
+      "description": "string",
+      "input_schema": {},
+      "output_schema": {},
+      "metadata": {}
+    }
+  ]
+}
+```
+
+Rules:
+
+- `name`, `description`, and `input_schema` are required
+- `title`, `output_schema`, and `metadata` are optional
+- a single request may register one or more tools
+
+### `deregister_tools`
+
+```json
+{
+  "tool_names": ["string"]
+}
+```
+
+### `register_resources`
+
+```json
+{
+  "resources": [
+    {
+      "uri": "string",
+      "name": "string",
+      "description": "string",
+      "mime_type": "string",
+      "metadata": {}
+    }
+  ]
+}
+```
+
+### `deregister_resources`
+
+```json
+{
+  "resource_uris": ["string"]
+}
+```
+
+### `read_resource`
+
+```json
+{
+  "uri": "string",
+  "arguments": {},
+  "context": {}
+}
+```
+
+### `resource_result`
+
+```json
+{
+  "uri": "string",
+  "contents": [],
+  "metadata": {}
+}
+```
+
+### `register_prompts`
+
+```json
+{
+  "prompts": [
+    {
+      "name": "string",
+      "description": "string",
+      "arguments": [],
+      "metadata": {}
+    }
+  ]
+}
+```
+
+### `deregister_prompts`
+
+```json
+{
+  "prompt_names": ["string"]
+}
+```
+
+### `get_prompt`
+
+```json
+{
+  "name": "string",
+  "arguments": {},
+  "context": {}
+}
+```
+
+### `prompt_result`
+
+```json
+{
+  "name": "string",
+  "messages": [],
+  "metadata": {}
+}
+```
+
+### `execute_tool`
+
+```json
+{
+  "tool_name": "string",
+  "arguments": {},
+  "context": {},
+  "stream": false
+}
+```
+
+Rules:
+
+- `tool_name` and `arguments` are required
+- `context` is optional and may carry relay or caller metadata
+- `stream` indicates whether progress events are expected before completion
+
+### `execution_progress`
+
+```json
+{
+  "tool_name": "string",
+  "progress": {
+    "message": "string",
+    "percentage": 50
+  }
+}
+```
+
+### `execution_result`
+
+```json
+{
+  "tool_name": "string",
+  "result": {},
+  "is_error": false,
+  "metadata": {}
+}
+```
+
+### `execution_error`
+
+```json
+{
+  "tool_name": "string",
+  "code": "string",
+  "message": "string",
+  "details": {}
+}
+```
+
+### `heartbeat`
+
+```json
+{
+  "timestamp": "RFC3339 string"
+}
+```
+
+### `shutdown` / `disconnect_notice`
+
+```json
+{
+  "reason": "string"
+}
+```
 
 ## 11.2 Execution correlation
 
@@ -757,12 +1122,24 @@ RLP must support at least:
 4. `tool_added`
 5. `tool_removed`
 6. `tool_updated`
-7. `execute_tool`
-8. `execution_progress`
-9. `execution_result`
-10. `execution_error`
-11. `heartbeat`
-12. `disconnect_notice`
+7. `resource_snapshot`
+8. `resource_added`
+9. `resource_removed`
+10. `resource_updated`
+11. `prompt_snapshot`
+12. `prompt_added`
+13. `prompt_removed`
+14. `prompt_updated`
+15. `read_resource`
+16. `resource_result`
+17. `get_prompt`
+18. `prompt_result`
+19. `execute_tool`
+20. `execution_progress`
+21. `execution_result`
+22. `execution_error`
+23. `heartbeat`
+24. `disconnect_notice`
 
 ## 12.1.1 RLP v1 envelope
 
@@ -801,6 +1178,18 @@ Required classification:
 - `tool_added`: event
 - `tool_removed`: event
 - `tool_updated`: event
+- `resource_snapshot`: event
+- `resource_added`: event
+- `resource_removed`: event
+- `resource_updated`: event
+- `prompt_snapshot`: event
+- `prompt_added`: event
+- `prompt_removed`: event
+- `prompt_updated`: event
+- `read_resource`: request
+- `resource_result`: response
+- `get_prompt`: request
+- `prompt_result`: response
 - `execute_tool`: request
 - `execution_progress`: event
 - `execution_result`: response or terminal event correlated by `execution_id`
@@ -820,6 +1209,272 @@ Error payloads must include:
 - `code`: machine-readable error code
 - `message`: human-readable error description
 - optional `details`: structured object
+
+## 12.1.4 RLP v1 payload schemas
+
+The following payload structures are required in RLP v1.
+
+### `hello` / `handshake`
+
+```json
+{
+  "relay_id": "string",
+  "role": "host|client",
+  "capabilities": {
+    "tool_sync": true,
+    "tool_execution": true
+  },
+  "metadata": {}
+}
+```
+
+### `bind_session`
+
+```json
+{
+  "relay_session_id": "string",
+  "session_token": "string",
+  "client_instance_id": "string"
+}
+```
+
+Rules:
+
+- `relay_session_id` is required
+- `session_token` is optional unless the host requires it
+- `client_instance_id` is required
+
+### `tool_snapshot`
+
+```json
+{
+  "registry_revision": 12,
+  "tools": [
+    {
+      "name": "string",
+      "title": "string",
+      "description": "string",
+      "input_schema": {},
+      "output_schema": {},
+      "metadata": {}
+    }
+  ],
+  "resources": [],
+  "prompts": []
+}
+```
+
+Rules:
+
+- `registry_revision` is required
+- `tools` is required and may be empty
+- `resources` and `prompts` are included so RLP can support MCP core primitives beyond tools in v1
+
+### `resource_snapshot`
+
+```json
+{
+  "registry_revision": 12,
+  "resources": [
+    {
+      "uri": "string",
+      "name": "string",
+      "description": "string",
+      "mime_type": "string",
+      "metadata": {}
+    }
+  ]
+}
+```
+
+### `resource_added` / `resource_updated`
+
+```json
+{
+  "registry_revision": 13,
+  "resource": {
+    "uri": "string",
+    "name": "string",
+    "description": "string",
+    "mime_type": "string",
+    "metadata": {}
+  }
+}
+```
+
+### `resource_removed`
+
+```json
+{
+  "registry_revision": 14,
+  "uri": "string"
+}
+```
+
+### `prompt_snapshot`
+
+```json
+{
+  "registry_revision": 12,
+  "prompts": [
+    {
+      "name": "string",
+      "description": "string",
+      "arguments": [],
+      "metadata": {}
+    }
+  ]
+}
+```
+
+### `prompt_added` / `prompt_updated`
+
+```json
+{
+  "registry_revision": 13,
+  "prompt": {
+    "name": "string",
+    "description": "string",
+    "arguments": [],
+    "metadata": {}
+  }
+}
+```
+
+### `prompt_removed`
+
+```json
+{
+  "registry_revision": 14,
+  "name": "string"
+}
+```
+
+### `read_resource`
+
+```json
+{
+  "uri": "string",
+  "arguments": {},
+  "context": {}
+}
+```
+
+### `resource_result`
+
+```json
+{
+  "uri": "string",
+  "contents": [],
+  "metadata": {}
+}
+```
+
+### `get_prompt`
+
+```json
+{
+  "name": "string",
+  "arguments": {},
+  "context": {}
+}
+```
+
+### `prompt_result`
+
+```json
+{
+  "name": "string",
+  "messages": [],
+  "metadata": {}
+}
+```
+
+### `tool_added` / `tool_updated`
+
+```json
+{
+  "registry_revision": 13,
+  "tool": {
+    "name": "string",
+    "title": "string",
+    "description": "string",
+    "input_schema": {},
+    "output_schema": {},
+    "metadata": {}
+  }
+}
+```
+
+### `tool_removed`
+
+```json
+{
+  "registry_revision": 14,
+  "tool_name": "string"
+}
+```
+
+### `execute_tool`
+
+```json
+{
+  "tool_name": "string",
+  "arguments": {},
+  "context": {},
+  "stream": false
+}
+```
+
+### `execution_progress`
+
+```json
+{
+  "tool_name": "string",
+  "progress": {
+    "message": "string",
+    "percentage": 50
+  }
+}
+```
+
+### `execution_result`
+
+```json
+{
+  "tool_name": "string",
+  "result": {},
+  "is_error": false,
+  "metadata": {}
+}
+```
+
+### `execution_error`
+
+```json
+{
+  "tool_name": "string",
+  "code": "string",
+  "message": "string",
+  "details": {}
+}
+```
+
+### `heartbeat`
+
+```json
+{
+  "timestamp": "RFC3339 string"
+}
+```
+
+### `disconnect_notice`
+
+```json
+{
+  "reason": "string"
+}
+```
 
 ## 12.2 RLP roles
 
@@ -1281,13 +1936,9 @@ Cover:
 
 The following items should be finalized during detailed design:
 
-1. Exact TEP wire schema
-2. Exact RLP wire schema
-3. Exact HTTP bidirectional transport mechanics
-4. Whether multiple Tool Executors are supported in v1
-5. Whether tool registration is fully dynamic only or also supports static bootstrap definitions
-6. How much MCP feature surface needs custom handling beyond tool-related flows
-7. Whether results/progress streams require a unified internal event model
+1. Whether multiple Tool Executors are supported in v1
+2. Whether tool registration is fully dynamic only or also supports static bootstrap definitions
+3. Whether results/progress streams require a unified internal event model
 
 ---
 
