@@ -470,32 +470,32 @@ Goal: connect transports, protocols, registries, and runtime state into the thre
 
 ### Tasks
 
-- [ ] Implement direct relay wiring: MCP ↔ core ↔ TEP
-- [ ] Implement host relay wiring: TEP ↔ core ↔ RLP listener
-- [ ] Implement client relay wiring: MCP ↔ core ↔ RLP connector
-- [ ] Implement startup sequencing per role
-- [ ] Implement shutdown sequencing per role
-- [ ] Implement session creation and relay/executor identity propagation
-- [ ] Implement role-aware routing for tool execution, resource reads, and prompt retrieval
-- [ ] Implement mirrored-registry read-only protections in client relay
-- [ ] Implement clear operational logs for role, transport, and session identity
-- [ ] Add CLI startup path that launches the correct runtime from config
+- [x] Implement direct relay wiring: MCP ↔ core ↔ TEP
+- [x] Implement host relay wiring: TEP ↔ core ↔ RLP listener
+- [x] Implement client relay wiring: MCP ↔ core ↔ RLP connector
+- [x] Implement startup sequencing per role
+- [x] Implement shutdown sequencing per role
+- [x] Implement session creation and relay/executor identity propagation
+- [x] Implement role-aware routing for tool execution, resource reads, and prompt retrieval
+- [x] Implement mirrored-registry read-only protections in client relay
+- [x] Implement clear operational logs for role, transport, and session identity
+- [x] Add CLI startup path that launches the correct runtime from config
 
 ### Test requirements
 
-- [ ] Direct relay starts successfully with valid config
-- [ ] Host relay starts successfully with valid config
-- [ ] Client relay starts successfully with valid config
-- [ ] Direct relay routes tool execution correctly
-- [ ] Host relay accepts client relay connections correctly
-- [ ] Client relay binds to intended host relay session correctly
-- [ ] Client relay rejects operations while mirror is stale
-- [ ] Shutdown drains or closes in-flight work according to implementation policy
+- [x] Direct relay starts successfully with valid config
+- [x] Host relay starts successfully with valid config
+- [x] Client relay starts successfully with valid config
+- [x] Direct relay routes tool execution correctly
+- [x] Host relay accepts client relay connections correctly
+- [x] Client relay binds to intended host relay session correctly
+- [x] Client relay rejects operations while mirror is stale
+- [x] Shutdown drains or closes in-flight work according to implementation policy
 
 ### Definition of done
 
-- [ ] All three runtime roles are executable from the CLI
-- [ ] Startup, routing, and shutdown behavior match the spec
+- [x] All three runtime roles are executable from the CLI
+- [x] Startup, routing, and shutdown behavior match the spec
 - [ ] The system can now run end-to-end in real topologies
 
 ---
@@ -506,34 +506,34 @@ Goal: add the resilience behavior required by the spec so the runtime handles fa
 
 ### Tasks
 
-- [ ] Implement connection-establishment timeouts
-- [ ] Implement initialization and registration timeouts
-- [ ] Implement tool execution timeouts
-- [ ] Implement heartbeat liveness timeouts
-- [ ] Implement retry/reconnect behavior where config permits it
-- [ ] Invalidate mirrored state on RLP disconnect
-- [ ] Reject new client-relay executions until resync completes
-- [ ] Implement backpressure limits for in-flight requests
-- [ ] Implement queue-depth limits
-- [ ] Implement slow-consumer handling behavior
-- [ ] Map transport and timeout failures into structured protocol errors
+- [x] Implement connection-establishment timeouts
+- [x] Implement initialization and registration timeouts
+- [x] Implement tool execution timeouts
+- [x] Implement heartbeat liveness timeouts
+- [x] Implement retry/reconnect behavior where config permits it
+- [x] Invalidate mirrored state on RLP disconnect
+- [x] Reject new client-relay executions until resync completes
+- [x] Implement backpressure limits for in-flight requests
+- [x] Implement queue-depth limits
+- [x] Implement slow-consumer handling behavior
+- [x] Map transport and timeout failures into structured protocol errors
 
 ### Test requirements
 
-- [ ] Connection timeout is enforced
-- [ ] Registration timeout is enforced
-- [ ] Execution timeout is enforced
-- [ ] Heartbeat timeout is enforced
-- [ ] RLP reconnect path restores service after resync
-- [ ] Client relay rejects new execution requests while stale
-- [ ] Backpressure limit is enforced
-- [ ] Slow-consumer path does not corrupt protocol state
+- [x] Connection timeout is enforced
+- [x] Registration timeout is enforced
+- [x] Execution timeout is enforced
+- [x] Heartbeat timeout is enforced
+- [x] RLP reconnect path restores service after resync
+- [x] Client relay rejects new execution requests while stale
+- [x] Backpressure limit is enforced
+- [x] Slow-consumer path does not corrupt protocol state
 
 ### Definition of done
 
-- [ ] Relay handles expected failure modes without undefined behavior
-- [ ] Timeout and reconnect behavior matches the spec
-- [ ] Overload behavior is explicit and test-covered
+- [x] Relay handles expected failure modes without undefined behavior
+- [x] Timeout and reconnect behavior matches the spec
+- [x] Overload behavior is explicit and test-covered
 
 ---
 
@@ -543,27 +543,27 @@ Goal: make the relay debuggable and operable in real workflows.
 
 ### Tasks
 
-- [ ] Implement structured logging fields for role, protocol side, transport, session, and request/execution IDs
-- [ ] Add startup summaries showing active role and transports
-- [ ] Add clear error logs for malformed messages and validation failures
-- [ ] Add disconnect/reconnect lifecycle logs
-- [ ] Add optional metrics hooks or counters for key runtime events
-- [ ] Add attached-client count tracking on host relay
-- [ ] Add debug logging controls via configuration
-- [ ] Document expected operator-visible logs and failure signals
+- [x] Implement structured logging fields for role, protocol side, transport, session, and request/execution IDs
+- [x] Add startup summaries showing active role and transports
+- [x] Add clear error logs for malformed messages and validation failures
+- [x] Add disconnect/reconnect lifecycle logs
+- [x] Add optional metrics hooks or counters for key runtime events
+- [x] Add attached-client count tracking on host relay
+- [x] Add debug logging controls via configuration
+- [x] Document expected operator-visible logs and failure signals
 
 ### Test requirements
 
-- [ ] Logs include role and session identity
-- [ ] Logs include request/execution correlation identifiers
-- [ ] Validation failures are visible in logs
-- [ ] Disconnect/reconnect events are visible in logs
-- [ ] Metrics/counters update for basic runtime activity if implemented
+- [x] Logs include role and session identity
+- [x] Logs include request/execution correlation identifiers
+- [x] Validation failures are visible in logs
+- [x] Disconnect/reconnect events are visible in logs
+- [x] Metrics/counters update for basic runtime activity if implemented
 
 ### Definition of done
 
-- [ ] Operators can understand what the relay is doing from logs alone
-- [ ] Failure diagnosis does not require ad hoc print debugging
+- [x] Operators can understand what the relay is doing from logs alone
+- [x] Failure diagnosis does not require ad hoc print debugging
 - [ ] Runtime diagnostics are good enough for iterative development and support
 
 ---

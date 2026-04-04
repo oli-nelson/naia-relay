@@ -9,6 +9,6 @@ def test_cli_main_returns_success(tmp_path: Path, monkeypatch) -> None:
         "role: direct\nmcp:\n  transport: stdio\nexecutor:\n  transport: stdio\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr("sys.argv", ["naia-relay", "--config-file", str(path)])
+    monkeypatch.setattr("sys.argv", ["naia-relay", "--config-file", str(path), "--once"])
 
     assert main() == 0

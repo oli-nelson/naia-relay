@@ -20,6 +20,9 @@ class RelayConfig(NaiaBaseModel):
     connection_timeout_seconds: int = Field(default=10, ge=1)
     heartbeat_timeout_seconds: int = Field(default=30, ge=1)
     max_message_size_bytes: int = Field(default=1_048_576, ge=1024)
+    max_in_flight_requests: int = Field(default=32, ge=1)
+    max_queue_depth: int = Field(default=128, ge=1)
+    reconnect_attempts: int = Field(default=3, ge=0)
     reject_duplicate_tool_names: bool = True
     log_level: str = "info"
 
