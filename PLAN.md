@@ -496,7 +496,7 @@ Goal: connect transports, protocols, registries, and runtime state into the thre
 
 - [x] All three runtime roles are executable from the CLI
 - [x] Startup, routing, and shutdown behavior match the spec
-- [ ] The system can now run end-to-end in real topologies
+- [x] The system can now run end-to-end in real topologies
 
 ---
 
@@ -564,7 +564,7 @@ Goal: make the relay debuggable and operable in real workflows.
 
 - [x] Operators can understand what the relay is doing from logs alone
 - [x] Failure diagnosis does not require ad hoc print debugging
-- [ ] Runtime diagnostics are good enough for iterative development and support
+- [x] Runtime diagnostics are good enough for iterative development and support
 
 ---
 
@@ -574,39 +574,39 @@ Goal: prove the whole system works across the transport and topology combination
 
 ### Tasks
 
-- [ ] Build direct-mode end-to-end integration fixtures
-- [ ] Build bridged-mode end-to-end integration fixtures
-- [ ] Add fixtures for tool, resource, and prompt registration
-- [ ] Add fixtures for execution, resource reads, and prompt retrieval
-- [ ] Add transport-matrix tests for stdio, TCP, and HTTP where supported
-- [ ] Add malformed-message conformance tests for MCP, TEP, and RLP
-- [ ] Add multi-client host-relay concurrency tests
-- [ ] Add reconnect/resnapshot integration tests
-- [ ] Add unsupported-MCP-feature behavior tests
-- [ ] Add regression tests for previously discovered bugs during development
+- [x] Build direct-mode end-to-end integration fixtures
+- [x] Build bridged-mode end-to-end integration fixtures
+- [x] Add fixtures for tool, resource, and prompt registration
+- [x] Add fixtures for execution, resource reads, and prompt retrieval
+- [x] Add transport-matrix tests for stdio, TCP, and HTTP where supported
+- [x] Add malformed-message conformance tests for MCP, TEP, and RLP
+- [x] Add multi-client host-relay concurrency tests
+- [x] Add reconnect/resnapshot integration tests
+- [x] Add unsupported-MCP-feature behavior tests
+- [x] Add regression tests for previously discovered bugs during development
 
 ### Test requirements
 
-- [ ] Direct: stdio MCP ↔ stdio TEP passes end to end
-- [ ] Direct: stdio MCP ↔ TCP TEP passes end to end
-- [ ] Direct: TCP MCP ↔ stdio TEP passes end to end
-- [ ] Direct: stdio MCP ↔ HTTP TEP passes end to end
-- [ ] Direct: HTTP MCP ↔ stdio TEP passes end to end
-- [ ] Bridged: stdio TEP host ↔ TCP RLP client ↔ stdio MCP passes end to end
-- [ ] Bridged: stdio TEP host ↔ stdio RLP client ↔ stdio MCP passes end to end if stdio RLP is implemented in v1
-- [ ] Host relay supports multiple concurrent client relays
-- [ ] Tool sync works end to end
-- [ ] Resource sync works end to end
-- [ ] Prompt sync works end to end
-- [ ] Tool execution works end to end
-- [ ] Resource read works end to end
-- [ ] Prompt retrieval works end to end
-- [ ] Disconnect/reconnect and resnapshot work end to end
+- [x] Direct: stdio MCP ↔ stdio TEP passes end to end
+- [x] Direct: stdio MCP ↔ TCP TEP passes end to end
+- [x] Direct: TCP MCP ↔ stdio TEP passes end to end
+- [x] Direct: stdio MCP ↔ HTTP TEP passes end to end
+- [x] Direct: HTTP MCP ↔ stdio TEP passes end to end
+- [x] Bridged: stdio TEP host ↔ TCP RLP client ↔ stdio MCP passes end to end
+- [x] Bridged: stdio TEP host ↔ stdio RLP client ↔ stdio MCP passes end to end if stdio RLP is implemented in v1
+- [x] Host relay supports multiple concurrent client relays
+- [x] Tool sync works end to end
+- [x] Resource sync works end to end
+- [x] Prompt sync works end to end
+- [x] Tool execution works end to end
+- [x] Resource read works end to end
+- [x] Prompt retrieval works end to end
+- [x] Disconnect/reconnect and resnapshot work end to end
 
 ### Definition of done
 
-- [ ] The advertised v1 transport and topology matrix is test-backed
-- [ ] End-to-end tests cover tools, resources, and prompts
+- [x] The advertised v1 transport and topology matrix is test-backed
+- [x] End-to-end tests cover tools, resources, and prompts
 - [ ] The implementation is ready for real-world trial use
 
 ---
@@ -645,7 +645,7 @@ Goal: prepare the repo for sustained iteration after the first implementation la
 
 - [x] Milestone A complete: Phases 0–3
 - [x] Milestone B complete: Phases 4–6
-- [ ] Milestone C complete: Phases 7–9
+- [x] Milestone C complete: Phases 7–9
 - [ ] Milestone D complete: Phases 10–12
 
 ---

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -11,6 +12,7 @@ from naia_relay.core import (
     SessionManager,
     SessionState,
     new_execution_id,
+    new_message_id,
     new_relay_id,
     new_session_id,
 )
@@ -19,6 +21,8 @@ from naia_relay.protocols.mcp import MCPHandler
 from naia_relay.protocols.rlp import RLPHandler
 from naia_relay.protocols.tep import TEPHandler
 from naia_relay.registry import RegistryStore
+
+RlpRequester = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 
 
 @dataclass(slots=True)
@@ -355,8 +359,7 @@ class DirectRelayRuntime(BaseRelayRuntime):
 
     async def _executor_execute_tool(self, payload: Any) -> dict[str, Any]:
         return {
-            "tool_name": payload.tool_name,
-            "result": {"echo": payload.arguments},
+            "content": [{"type": "text", "text": f"{payload.tool_name}:{payload.arguments}"}]
         }
 
     async def _executor_read_resource(self, payload: Any) -> list[Any]:
@@ -423,7 +426,9 @@ class HostRelayRuntime(BaseRelayRuntime):
         return response
 
     async def _executor_execute_tool(self, payload: Any) -> dict[str, Any]:
-        return {"tool_name": payload.tool_name, "result": {"echo": payload.arguments}}
+        return {
+            "content": [{"type": "text", "text": f"{payload.tool_name}:{payload.arguments}"}]
+        }
 
     async def _executor_read_resource(self, payload: Any) -> list[Any]:
         return [{"uri": payload.uri, "context": payload.context}]
@@ -448,6 +453,7 @@ class ClientRelayRuntime(BaseRelayRuntime):
     registry: RegistryStore = field(default_factory=lambda: RegistryStore(mode="mirrored"))
     mcp_handler: MCPHandler = field(init=False)
     rlp_handler: RLPHandler = field(init=False)
+    _upstream_requester: RlpRequester | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         BaseRelayRuntime.__post_init__(self)
@@ -503,7 +509,23 @@ class ClientRelayRuntime(BaseRelayRuntime):
             raise
 
     async def bind_to_host(self, host: HostRelayRuntime) -> dict[str, Any]:
-        self.rlp_handler.relay_session_id = host.session_id
+        return await self.bind_via_requester(
+            host.handle_rlp_message,
+            host_session_id=host.session_id,
+            host_relay_id=host.relay_id,
+        )
+
+    async def bind_via_requester(
+        self,
+        requester: RlpRequester,
+        *,
+        host_session_id: str,
+        host_relay_id: str,
+    ) -> dict[str, Any]:
+        self._upstream_requester = requester
+        self.rlp_handler.host_relay_id = host_relay_id
+        self.rlp_handler.relay_session_id = host_session_id
+        self.registry.mark_stale()
         last_error: ProtocolError | None = None
         for attempt in range(self.reconnect_attempts + 1):
             self.stats.reconnect_attempts += 1
@@ -518,16 +540,16 @@ class ClientRelayRuntime(BaseRelayRuntime):
             )
             try:
                 response = await self._with_timeout(
-                    host.handle_rlp_message(
+                    requester(
                         {
                             "protocol": "rlp",
                             "version": "1.0",
                             "message_type": "bind_session",
                             "message_id": "msg_bind",
-                            "relay_session_id": host.session_id,
+                            "relay_session_id": host_session_id,
                             "source_relay_id": self.relay_id,
                             "payload": {
-                                "relay_session_id": host.session_id,
+                                "relay_session_id": host_session_id,
                                 "client_instance_id": self.relay_id,
                             },
                         }
@@ -574,8 +596,8 @@ class ClientRelayRuntime(BaseRelayRuntime):
                     "version": "1.0",
                     "message_type": "tool_snapshot",
                     "message_id": "msg_snapshot",
-                    "relay_session_id": host.session_id,
-                    "source_relay_id": host.relay_id,
+                    "relay_session_id": host_session_id,
+                    "source_relay_id": host_relay_id,
                     "payload": details,
                 }
                 await self.handle_rlp_message(snapshot_message)
@@ -588,7 +610,10 @@ class ClientRelayRuntime(BaseRelayRuntime):
                     },
                 )
                 return response
-            last_error = ProtocolError("Failed to bind client relay to host relay")
+            last_error = ProtocolError(
+                "Failed to bind client relay to host relay",
+                code="relay_link_bind_failed",
+            )
         raise last_error or ProtocolError(
             "Failed to bind client relay to host relay",
             code="relay_link_bind_failed",
@@ -617,7 +642,26 @@ class ClientRelayRuntime(BaseRelayRuntime):
                 "execution_id": execution_id,
             },
         )
-        return {"content": [{"type": "text", "text": f"{name}:{arguments}"}]}
+        if self._upstream_requester is None:
+            return {"content": [{"type": "text", "text": f"{name}:{arguments}"}]}
+        response = await self._upstream_requester(
+            {
+                "protocol": "rlp",
+                "version": "1.0",
+                "message_type": "execute_tool",
+                "message_id": new_message_id(),
+                "relay_session_id": self.rlp_handler.relay_session_id,
+                "source_relay_id": self.relay_id,
+                "execution_id": execution_id,
+                "payload": {"tool_name": name, "arguments": arguments},
+            }
+        )
+        if response["payload"]["status"] != "ok":
+            raise ProtocolError(
+                response["payload"].get("message", "Upstream tool execution failed"),
+                code=str(response["payload"].get("code", "upstream_error")),
+            )
+        return response["payload"]["details"]
 
     async def read_resource(self, uri: str, arguments: dict[str, Any]) -> list[dict[str, Any]]:
         if self.registry.stale:
@@ -632,7 +676,25 @@ class ClientRelayRuntime(BaseRelayRuntime):
                 code="unknown_resource",
                 data={"uri": uri},
             )
-        return [{"uri": uri, "arguments": arguments}]
+        if self._upstream_requester is None:
+            return [{"uri": uri, "arguments": arguments}]
+        response = await self._upstream_requester(
+            {
+                "protocol": "rlp",
+                "version": "1.0",
+                "message_type": "read_resource",
+                "message_id": new_message_id(),
+                "relay_session_id": self.rlp_handler.relay_session_id,
+                "source_relay_id": self.relay_id,
+                "payload": {"uri": uri, "context": arguments},
+            }
+        )
+        if response["payload"]["status"] != "ok":
+            raise ProtocolError(
+                response["payload"].get("message", "Upstream resource read failed"),
+                code=str(response["payload"].get("code", "upstream_error")),
+            )
+        return response["payload"]["details"]["contents"]
 
     async def get_prompt(self, name: str, arguments: dict[str, Any]) -> list[dict[str, Any]]:
         if self.registry.stale:
@@ -647,7 +709,25 @@ class ClientRelayRuntime(BaseRelayRuntime):
                 code="unknown_prompt",
                 data={"name": name},
             )
-        return [{"role": "user", "content": {"name": name, "arguments": arguments}}]
+        if self._upstream_requester is None:
+            return [{"role": "user", "content": {"name": name, "arguments": arguments}}]
+        response = await self._upstream_requester(
+            {
+                "protocol": "rlp",
+                "version": "1.0",
+                "message_type": "get_prompt",
+                "message_id": new_message_id(),
+                "relay_session_id": self.rlp_handler.relay_session_id,
+                "source_relay_id": self.relay_id,
+                "payload": {"name": name, "arguments": arguments},
+            }
+        )
+        if response["payload"]["status"] != "ok":
+            raise ProtocolError(
+                response["payload"].get("message", "Upstream prompt retrieval failed"),
+                code=str(response["payload"].get("code", "upstream_error")),
+            )
+        return response["payload"]["details"]["messages"]
 
     def mark_stale(self) -> None:
         self.registry.mark_stale()
@@ -655,6 +735,7 @@ class ClientRelayRuntime(BaseRelayRuntime):
 
     def on_rlp_disconnect(self) -> None:
         self.mark_stale()
+        self._upstream_requester = None
         self.record_disconnect(peer="relay_link")
         self.logger.warning(
             "client relay marked stale after relay-link disconnect",
