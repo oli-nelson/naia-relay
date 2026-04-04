@@ -1,0 +1,9 @@
+role: client
+
+mcp:
+  transport: stdio
+
+relay_link:
+  transport: tcp
+  host: 127.0.0.1
+  port: 9001
