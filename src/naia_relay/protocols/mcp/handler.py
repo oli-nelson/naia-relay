@@ -11,7 +11,8 @@ ExecuteToolCallback = Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]]]
 ReadResourceCallback = Callable[[str, dict[str, Any]], Awaitable[list[Any]]]
 GetPromptCallback = Callable[[str, dict[str, Any]], Awaitable[list[Any]]]
 
-SUPPORTED_PROTOCOL_VERSION = "2025-03-26"
+SUPPORTED_PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26")
+DEFAULT_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0]
 
 
 @dataclass(slots=True)
@@ -32,7 +33,7 @@ class MCPHandler:
                 return self._result(
                     request.id,
                     {
-                        "protocolVersion": SUPPORTED_PROTOCOL_VERSION,
+                        "protocolVersion": self._negotiate_protocol_version(request.params),
                         "capabilities": {
                             "tools": {"listChanged": True},
                             "resources": {"listChanged": True},
@@ -147,6 +148,13 @@ class MCPHandler:
                 )
             case _:
                 return self._error(request.id, -32601, f"Method not found: {request.method}")
+
+
+    def _negotiate_protocol_version(self, params: dict[str, Any]) -> str:
+        requested = params.get("protocolVersion")
+        if isinstance(requested, str) and requested in SUPPORTED_PROTOCOL_VERSIONS:
+            return requested
+        return DEFAULT_PROTOCOL_VERSION
 
     def make_log_notification(
         self, level: str, message: str, data: dict[str, Any] | None = None

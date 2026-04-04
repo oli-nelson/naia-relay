@@ -25,7 +25,7 @@ def _pick_source(
     cli_config_yaml: str | None,
     environ: dict[str, str] | None = None,
 ) -> ConfigSource:
-    env = environ or dict(os.environ)
+    env = dict(os.environ) if environ is None else environ
 
     if cli_config_file and cli_config_yaml:
         raise ConfigurationError(

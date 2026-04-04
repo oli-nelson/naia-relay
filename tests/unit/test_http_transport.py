@@ -89,11 +89,11 @@ async def test_mcp_over_http_non_streaming_round_trip() -> None:
             "jsonrpc": "2.0",
             "id": 1,
             "method": "initialize",
-            "params": {"protocolVersion": "2025-03-26", "capabilities": {}},
+            "params": {"protocolVersion": "2025-06-18", "capabilities": {}},
         }
     )
 
-    assert response["result"]["protocolVersion"] == "2025-03-26"
+    assert response["result"]["protocolVersion"] == "2025-06-18"
 
 
 @pytest.mark.asyncio

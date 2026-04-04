@@ -63,3 +63,7 @@ def main() -> int:
         logging.getLogger(__name__).error("Configuration error: %s", exc)
         return 2
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

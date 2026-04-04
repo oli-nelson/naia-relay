@@ -125,6 +125,10 @@ class RawConfig(NaiaBaseModel):
                 raise ValueError("role 'direct' requires both 'mcp' and 'executor'")
             if self.relay_link is not None:
                 raise ValueError("role 'direct' must not define 'relay_link'")
+            if self.mcp.transport == "stdio" and self.executor.transport == "stdio":
+                raise ValueError(
+                    "role 'direct' cannot use stdio for both mcp and executor transports"
+                )
         elif self.role == "host":
             if self.executor is None or self.relay_link is None:
                 raise ValueError("role 'host' requires both 'executor' and 'relay_link'")

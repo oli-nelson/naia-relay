@@ -5,7 +5,12 @@ import asyncio
 import pytest
 
 from naia_relay.errors import TransportError
-from naia_relay.transports import LineJsonFramer, StdioTransportAdapter, TcpTransportAdapter
+from naia_relay.transports import (
+    LineJsonFramer,
+    McpStdioTransportAdapter,
+    StdioTransportAdapter,
+    TcpTransportAdapter,
+)
 
 
 class MemoryWriter:
@@ -61,6 +66,24 @@ def test_line_json_framer_rejects_malformed_json() -> None:
 
     with pytest.raises(TransportError):
         framer.decode(b'{"bad"\n')
+
+
+@pytest.mark.asyncio
+async def test_mcp_stdio_adapter_uses_newline_delimited_json() -> None:
+    reader = asyncio.StreamReader()
+    writer = MemoryWriter()
+    adapter = McpStdioTransportAdapter(reader=reader, writer=writer)
+    await adapter.start()
+
+    payload = {"jsonrpc": "2.0", "id": 1, "method": "initialize"}
+    reader.feed_data(b'{"jsonrpc":"2.0","id":1,"method":"initialize"}\n')
+    reader.feed_eof()
+
+    await adapter.send({"jsonrpc": "2.0", "id": 1, "result": {}})
+    received = await adapter.receive()
+
+    assert writer.buffer == b'{"id":1,"jsonrpc":"2.0","result":{}}\n'
+    assert received == payload
 
 
 @pytest.mark.asyncio

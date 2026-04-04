@@ -100,6 +100,20 @@ Not supported in v1:
 
 - `http`
 
+## Stdio protocol mapping
+
+The protocol carried over stdio depends on the peer:
+
+- Tool Executor ↔ relay over stdio
+  - TEP
+  - JSON messages using newline-delimited framing
+- relay ↔ relay over stdio
+  - RLP
+  - JSON messages using newline-delimited framing
+- Codex / MCP client ↔ relay over stdio
+  - MCP
+  - MCP `Content-Length` framing as expected by MCP clients such as Codex
+
 ## Example configs
 
 ### Direct role
@@ -107,24 +121,28 @@ Not supported in v1:
 Use:
 
 - `examples/direct/config.yaml`
+- `examples/scripts/run-direct.sh`
 
 ### Host role
 
 Use:
 
 - `examples/host/config.yaml`
+- `examples/scripts/run-host.sh`
 
 ### Client role
 
 Use:
 
 - `examples/client/config.yaml`
+- `examples/scripts/run-client.sh`
 
 ### Neovim host relay
 
 Use:
 
 - `examples/neovim-host/config.yaml`
+- `examples/scripts/run-neovim-host.sh`
 
 This is the long-lived relay that stays attached to the Neovim Tool Executor.
 
@@ -133,9 +151,30 @@ This is the long-lived relay that stays attached to the Neovim Tool Executor.
 Use:
 
 - `examples/codex-client/config.yaml`
+- `examples/scripts/run-codex-client.sh`
 
 This is the short-lived relay started for a Codex session. It uses MCP over
 `stdio` and connects upstream to the long-lived host relay over RLP.
+
+## Example shell scripts
+
+The repository includes runnable shell wrappers in `examples/scripts/`:
+
+- `run-direct.sh`
+- `run-host.sh`
+- `run-client.sh`
+- `run-neovim-host.sh`
+- `run-codex-client.sh`
+
+Examples:
+
+```bash
+examples/scripts/run-direct.sh --once
+examples/scripts/run-host.sh
+examples/scripts/run-client.sh
+examples/scripts/run-neovim-host.sh
+examples/scripts/run-codex-client.sh
+```
 
 ## Readiness file support
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from naia_relay.protocols.mcp import SUPPORTED_PROTOCOL_VERSION, MCPHandler
+from naia_relay.protocols.mcp import DEFAULT_PROTOCOL_VERSION, MCPHandler
 from naia_relay.registry import PromptDefinition, RegistryStore, ResourceDefinition, ToolDefinition
 
 
@@ -23,10 +23,10 @@ async def test_mcp_initialize_and_initialized() -> None:
             "jsonrpc": "2.0",
             "id": 1,
             "method": "initialize",
-            "params": {"protocolVersion": SUPPORTED_PROTOCOL_VERSION, "capabilities": {}},
+            "params": {"protocolVersion": DEFAULT_PROTOCOL_VERSION, "capabilities": {}},
         }
     )
-    assert response["result"]["protocolVersion"] == SUPPORTED_PROTOCOL_VERSION
+    assert response["result"]["protocolVersion"] == DEFAULT_PROTOCOL_VERSION
 
     notification = await handler.handle_message(
         {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}

@@ -16,6 +16,19 @@ def test_all_example_configs_are_valid_yaml_for_the_loader() -> None:
         assert config.role in {"direct", "host", "client"}
 
 
+def test_example_shell_scripts_exist_for_supported_modes() -> None:
+    scripts = {
+        "examples/scripts/run-direct.sh",
+        "examples/scripts/run-host.sh",
+        "examples/scripts/run-client.sh",
+        "examples/scripts/run-neovim-host.sh",
+        "examples/scripts/run-codex-client.sh",
+    }
+
+    for relative_path in scripts:
+        assert (REPO_ROOT / relative_path).exists()
+
+
 def test_documentation_mentions_real_cli_and_example_paths() -> None:
     operator_doc = (REPO_ROOT / "doc" / "operator-guide.md").read_text(encoding="utf-8")
     developer_doc = (REPO_ROOT / "doc" / "developer-guide.md").read_text(encoding="utf-8")
@@ -29,6 +42,7 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     assert 'pip install -e ".[dev]"' in operator_doc
     assert "examples/neovim-host/config.yaml" in operator_doc
     assert "examples/codex-client/config.yaml" in operator_doc
+    assert "examples/scripts/run-direct.sh" in operator_doc
     assert "tests/integration/" in developer_doc
     assert "SPEC.md" in docs_index
     assert "register_tools" in tep_doc

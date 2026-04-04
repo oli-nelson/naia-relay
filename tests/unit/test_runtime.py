@@ -7,7 +7,13 @@ import pytest
 
 from naia_relay.config import load_config
 from naia_relay.errors import ProtocolError
-from naia_relay.runtime import ClientRelayRuntime, HostRelayRuntime, create_runtime, run_from_config
+from naia_relay.runtime import (
+    ClientRelayRuntime,
+    HostRelayRuntime,
+    create_runtime,
+    run_from_config,
+    serve_mcp_stdio,
+)
 
 
 def load_inline_config(text: str):
@@ -21,7 +27,7 @@ async def test_direct_runtime_starts_from_valid_config() -> None:
         load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
         )
     )
     await runtime.start()
@@ -34,7 +40,7 @@ async def test_host_runtime_starts_from_valid_config() -> None:
     runtime = create_runtime(
         load_inline_config(
             "role: host\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay_link:\n  transport: tcp\n  bind_port: 9001\n"
         )
     )
@@ -61,7 +67,7 @@ async def test_direct_runtime_routes_tool_execution() -> None:
         load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
         )
     )
     await runtime.start()
@@ -92,7 +98,7 @@ async def test_host_accepts_client_and_client_binds() -> None:
     host = HostRelayRuntime(
         config=load_inline_config(
             "role: host\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay_link:\n  transport: tcp\n  bind_port: 9001\n"
         )
     )
@@ -145,7 +151,7 @@ async def test_shutdown_waits_for_inflight_request_completion() -> None:
         load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay:\n  request_timeout_seconds: 2\n"
         )
     )
@@ -214,7 +220,7 @@ async def test_host_dynamic_listener_writes_readiness_file(
     ready_file = tmp_path / "ready.json"
     config = load_inline_config(
         "role: host\n"
-        "executor:\n  transport: stdio\n"
+        "executor:\n  transport: tcp\n  port: 9002\n"
         "relay_link:\n  transport: tcp\n  bind_host: 127.0.0.1\n  bind_port: 0\n"
     )
 
@@ -225,3 +231,63 @@ async def test_host_dynamic_listener_writes_readiness_file(
     assert payload["event"] == "listener_ready"
     assert payload["role"] == "host"
     assert payload["listeners"]["relay_link"]["port"] == 54321
+
+
+@pytest.mark.asyncio
+async def test_serve_mcp_stdio_returns_newline_delimited_initialize_response() -> None:
+    runtime = create_runtime(
+        load_inline_config(
+            "role: direct\n"
+            "mcp:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
+        )
+    )
+    reader = asyncio.StreamReader()
+
+    class BufferWriter:
+        def __init__(self) -> None:
+            self.buffer = bytearray()
+
+        def write(self, data: bytes) -> None:
+            self.buffer.extend(data)
+
+        def flush(self) -> None:
+            return None
+
+    writer = BufferWriter()
+    request_body = (
+        b'{"jsonrpc":"2.0","id":1,"method":"initialize",'
+        b'"params":{"protocolVersion":"2025-06-18","capabilities":{}}}\n'
+    )
+    reader.feed_data(request_body)
+    reader.feed_eof()
+
+    await runtime.start()
+    await serve_mcp_stdio(runtime, reader=reader, writer=writer)
+
+    assert writer.buffer.endswith(b"\n")
+    assert b'"protocolVersion":"2025-06-18"' in writer.buffer
+
+
+@pytest.mark.asyncio
+async def test_run_from_config_auto_binds_client_tcp_relay_link(monkeypatch) -> None:
+    runtime = create_runtime(
+        load_inline_config(
+            "role: client\n"
+            "mcp:\n  transport: stdio\n"
+            "relay_link:\n  transport: tcp\n  port: 9001\n"
+        )
+    )
+
+    called = False
+
+    async def fake_auto_bind(self) -> None:
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr("naia_relay.runtime.relay.create_runtime", lambda config: runtime)
+    monkeypatch.setattr(type(runtime), "_auto_bind_tcp_relay_link", fake_auto_bind)
+
+    await run_from_config(runtime.config, once=True)
+
+    assert called is True

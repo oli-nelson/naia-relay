@@ -7,6 +7,8 @@ from naia_relay.runtime.relay import (
     HostRelayRuntime,
     create_runtime,
     run_from_config,
+    serve_mcp_stdio,
+    serve_tep_stdio,
 )
 
 __all__ = [
@@ -16,4 +18,6 @@ __all__ = [
     "HostRelayRuntime",
     "create_runtime",
     "run_from_config",
+    "serve_mcp_stdio",
+    "serve_tep_stdio",
 ]

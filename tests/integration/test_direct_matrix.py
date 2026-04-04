@@ -13,7 +13,6 @@ from .helpers import (
 @pytest.mark.parametrize(
     ("mcp_transport", "executor_transport"),
     [
-        ("stdio", "stdio"),
         ("stdio", "tcp"),
         ("tcp", "stdio"),
         ("stdio", "http"),
@@ -36,7 +35,7 @@ async def test_direct_topology_matrix_supports_end_to_end_flows(
             "jsonrpc": "2.0",
             "id": 1,
             "method": "initialize",
-            "params": {"protocolVersion": "2025-03-26", "capabilities": {}},
+            "params": {"protocolVersion": "2025-06-18", "capabilities": {}},
         },
     )
     tools = await mcp_round_trip(
@@ -82,7 +81,7 @@ async def test_direct_topology_matrix_supports_end_to_end_flows(
     await runtime.stop()
 
     assert initialize is not None
-    assert initialize["result"]["protocolVersion"] == "2025-03-26"
+    assert initialize["result"]["protocolVersion"] == "2025-06-18"
     assert tools["result"]["tools"][0]["name"] == "demo"
     assert resources["result"]["resources"][0]["uri"] == "file:///demo"
     assert prompts["result"]["prompts"][0]["name"] == "prompt"

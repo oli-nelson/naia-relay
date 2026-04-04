@@ -11,7 +11,7 @@ from naia_relay.errors import ConfigurationError
 def test_load_config_from_cli_file(tmp_path: Path) -> None:
     path = tmp_path / "config.yaml"
     path.write_text(
-        "role: direct\nmcp:\n  transport: stdio\nexecutor:\n  transport: stdio\n",
+        "role: direct\nmcp:\n  transport: stdio\nexecutor:\n  transport: tcp\n  port: 9002\n",
         encoding="utf-8",
     )
 
@@ -24,7 +24,7 @@ def test_load_config_from_cli_file(tmp_path: Path) -> None:
 def test_load_config_from_environment_file(tmp_path: Path) -> None:
     path = tmp_path / "config.yaml"
     path.write_text(
-        "role: direct\nmcp:\n  transport: stdio\nexecutor:\n  transport: stdio\n",
+        "role: direct\nmcp:\n  transport: stdio\nexecutor:\n  transport: tcp\n  port: 9002\n",
         encoding="utf-8",
     )
 
@@ -65,7 +65,7 @@ def test_load_config_from_environment_yaml() -> None:
 def test_cli_precedence_over_environment(tmp_path: Path) -> None:
     path = tmp_path / "config.yaml"
     path.write_text(
-        "role: direct\nmcp:\n  transport: stdio\nexecutor:\n  transport: stdio\n",
+        "role: direct\nmcp:\n  transport: stdio\nexecutor:\n  transport: tcp\n  port: 9002\n",
         encoding="utf-8",
     )
 
@@ -168,3 +168,14 @@ def test_host_relay_link_bind_port_zero_is_allowed() -> None:
 
     assert config.role == "host"
     assert config.relay_link.bind_port == 0
+
+
+def test_direct_rejects_stdio_on_both_sides() -> None:
+    with pytest.raises(ConfigurationError):
+        load_config(
+            cli_config_yaml=(
+                "role: direct\n"
+                "mcp:\n  transport: stdio\n"
+                "executor:\n  transport: stdio\n"
+            )
+        )

@@ -13,7 +13,7 @@ from .helpers import (
 
 @pytest.mark.asyncio
 async def test_malformed_mcp_message_fails_cleanly() -> None:
-    runtime = build_direct_runtime("stdio", "stdio")
+    runtime = build_direct_runtime("stdio", "tcp")
     await runtime.start()
 
     with pytest.raises(ValidationError):
@@ -24,7 +24,7 @@ async def test_malformed_mcp_message_fails_cleanly() -> None:
 
 @pytest.mark.asyncio
 async def test_malformed_tep_message_fails_cleanly() -> None:
-    runtime = build_direct_runtime("stdio", "stdio")
+    runtime = build_direct_runtime("stdio", "tcp")
     await runtime.start()
 
     with pytest.raises(ValidationError):

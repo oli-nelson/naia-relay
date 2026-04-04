@@ -24,7 +24,7 @@ async def test_runtime_logs_include_role_and_session_identity(
         load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
         )
     )
 
@@ -47,7 +47,7 @@ async def test_runtime_logs_include_request_identifier(caplog: pytest.LogCapture
         load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
         )
     )
     await runtime.start()
@@ -71,7 +71,7 @@ async def test_execution_logs_include_execution_identifier(
         load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
         )
     )
     await runtime.start()
@@ -111,7 +111,7 @@ async def test_validation_failures_are_logged(caplog: pytest.LogCaptureFixture) 
         load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
         )
     )
     await runtime.start()
@@ -134,7 +134,7 @@ async def test_disconnect_and_reconnect_events_are_logged(
     host = create_runtime(
         load_inline_config(
             "role: host\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay_link:\n  transport: tcp\n  bind_port: 9001\n"
         )
     )
@@ -170,7 +170,7 @@ async def test_runtime_counters_update_for_basic_activity() -> None:
         load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
         )
     )
     await runtime.start()

@@ -23,7 +23,12 @@ from naia_relay.protocols.mcp import MCPHandler
 from naia_relay.protocols.rlp import RLPHandler
 from naia_relay.protocols.tep import TEPHandler
 from naia_relay.registry import RegistryStore
-from naia_relay.transports import LineJsonFramer
+from naia_relay.transports import (
+    LineJsonFramer,
+    McpStdioTransportAdapter,
+    StdioTransportAdapter,
+    TcpTransportAdapter,
+)
 
 RlpRequester = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 
@@ -417,8 +422,6 @@ class HostRelayRuntime(BaseRelayRuntime):
         self.session_manager.add(
             SessionState(session_id=f"{self.session_id}:clients", kind="rlp", peer_id="clients")
         )
-        if self.config.relay_link.transport == "tcp" and self.config.relay_link.bind_port == 0:
-            await self._start_dynamic_rlp_listener()
 
     async def stop(self) -> None:
         if self._rlp_server is not None:
@@ -469,7 +472,7 @@ class HostRelayRuntime(BaseRelayRuntime):
     async def _rlp_get_prompt(self, payload: Any) -> list[Any]:
         return await self._executor_get_prompt(payload)
 
-    async def _start_dynamic_rlp_listener(self) -> None:
+    async def _start_rlp_listener(self, *, bind_port: int) -> None:
         bind_host = self.config.relay_link.bind_host or "127.0.0.1"
 
         async def handle_client(
@@ -489,7 +492,7 @@ class HostRelayRuntime(BaseRelayRuntime):
                 writer.close()
                 await writer.wait_closed()
 
-        self._rlp_server = await asyncio.start_server(handle_client, bind_host, 0)
+        self._rlp_server = await asyncio.start_server(handle_client, bind_host, bind_port)
         sock = self._rlp_server.sockets[0]
         host, port = sock.getsockname()[:2]
         self.resolved_listeners["relay_link"] = {
@@ -560,6 +563,56 @@ class ClientRelayRuntime(BaseRelayRuntime):
         except Exception as exc:
             self.record_validation_failure(exc, request_id=message.get("message_id"))
             raise
+
+    async def _tcp_round_trip(self, message: dict[str, Any]) -> dict[str, Any]:
+        host = self.config.relay_link.host or "127.0.0.1"
+        port = self.config.relay_link.port
+        if port is None:
+            raise ConfigurationError("client relay tcp transport requires relay_link.port")
+        adapter = TcpTransportAdapter(
+            host=host,
+            port=port,
+            max_message_size_bytes=self.config.relay.max_message_size_bytes,
+        )
+        await adapter.start()
+        try:
+            await adapter.send(message)
+            return await adapter.receive()
+        finally:
+            await adapter.stop()
+
+    async def _auto_bind_tcp_relay_link(self) -> None:
+        hello = await self._with_timeout(
+            self._tcp_round_trip(
+                {
+                    "protocol": "rlp",
+                    "version": "1.0",
+                    "message_type": "hello",
+                    "message_id": new_message_id(),
+                    "source_relay_id": self.relay_id,
+                    "payload": {
+                        "relay_id": self.relay_id,
+                        "role": "client",
+                        "capabilities": {"tool_sync": True, "tool_execution": True},
+                        "metadata": {},
+                    },
+                }
+            ),
+            timeout=self.connection_timeout_seconds,
+            label="Relay-link hello",
+        )
+        host_session_id = str(hello.get("relay_session_id") or "")
+        host_relay_id = str(hello.get("source_relay_id") or "")
+        if not host_session_id or not host_relay_id:
+            raise ProtocolError(
+                "Relay-link hello did not return host identity",
+                code="relay_link_hello_failed",
+            )
+        await self.bind_via_requester(
+            self._tcp_round_trip,
+            host_session_id=host_session_id,
+            host_relay_id=host_relay_id,
+        )
 
     async def bind_to_host(self, host: HostRelayRuntime) -> dict[str, Any]:
         return await self.bind_via_requester(
@@ -828,14 +881,100 @@ async def run_from_config(
 ) -> BaseRelayRuntime:
     runtime = create_runtime(config)
     await runtime.start()
+    if isinstance(runtime, HostRelayRuntime) and config.relay_link.transport == "tcp":
+        bind_port = config.relay_link.bind_port
+        if bind_port is not None:
+            await runtime._start_rlp_listener(bind_port=bind_port)
+    if isinstance(runtime, ClientRelayRuntime) and config.relay_link.transport == "tcp":
+        await runtime._auto_bind_tcp_relay_link()
     if ready_file is not None:
         write_readiness_file(ready_file, runtime.readiness_payload())
     if once:
         await runtime.stop()
     else:
-        try:
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:  # pragma: no cover - lifecycle convenience
-            await runtime.stop()
-            raise
+        if hasattr(runtime, "handle_mcp_message") and getattr(config, "mcp", None) is not None:
+            if config.mcp.transport == "stdio":
+                await serve_mcp_stdio(runtime)
+            else:
+                try:
+                    await asyncio.Event().wait()
+                except asyncio.CancelledError:  # pragma: no cover - lifecycle convenience
+                    await runtime.stop()
+                    raise
+        elif (
+            hasattr(runtime, "handle_tep_message")
+            and getattr(config, "executor", None) is not None
+        ):
+            if config.executor.transport == "stdio":
+                await serve_tep_stdio(runtime)
+            else:
+                try:
+                    await asyncio.Event().wait()
+                except asyncio.CancelledError:  # pragma: no cover - lifecycle convenience
+                    await runtime.stop()
+                    raise
+        else:
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:  # pragma: no cover - lifecycle convenience
+                await runtime.stop()
+                raise
     return runtime
+
+
+async def serve_mcp_stdio(
+    runtime: BaseRelayRuntime,
+    *,
+    reader: asyncio.StreamReader | None = None,
+    writer: Any | None = None,
+) -> None:
+    if not hasattr(runtime, "handle_mcp_message"):
+        raise ConfigurationError("Runtime does not support MCP stdio serving.")
+
+    adapter = McpStdioTransportAdapter(
+        reader=reader,
+        writer=writer,
+        max_message_size_bytes=runtime.config.relay.max_message_size_bytes,
+    )
+    await adapter.start()
+    try:
+        while runtime.started:
+            try:
+                message = await adapter.receive()
+            except Exception:
+                break
+            response = await runtime.handle_mcp_message(message)  # type: ignore[attr-defined]
+            if response is not None:
+                await adapter.send(response)
+    finally:
+        await adapter.stop()
+        await runtime.stop()
+
+
+async def serve_tep_stdio(
+    runtime: BaseRelayRuntime,
+    *,
+    reader: asyncio.StreamReader | None = None,
+    writer: Any | None = None,
+) -> None:
+    if not hasattr(runtime, "handle_tep_message"):
+        raise ConfigurationError("Runtime does not support TEP stdio serving.")
+
+    adapter = StdioTransportAdapter(
+        reader=reader,
+        writer=writer,
+        max_message_size_bytes=runtime.config.relay.max_message_size_bytes,
+    )
+    await adapter.start()
+    try:
+        while runtime.started:
+            try:
+                message = await adapter.receive()
+            except Exception:
+                break
+            response = await runtime.handle_tep_message(message)  # type: ignore[attr-defined]
+            if response is not None:
+                await adapter.send(response)
+    finally:
+        await adapter.stop()
+        await runtime.stop()

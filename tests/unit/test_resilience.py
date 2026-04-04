@@ -20,7 +20,7 @@ async def test_request_timeout_is_enforced() -> None:
         config=load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay:\n  request_timeout_seconds: 1\n"
         )
     )
@@ -63,7 +63,7 @@ async def test_registration_timeout_is_enforced(monkeypatch: pytest.MonkeyPatch)
         config=load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay:\n  request_timeout_seconds: 1\n"
         )
     )
@@ -101,7 +101,7 @@ async def test_initialization_timeout_is_enforced(monkeypatch: pytest.MonkeyPatc
         config=load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay:\n  request_timeout_seconds: 1\n"
         )
     )
@@ -130,7 +130,7 @@ async def test_backpressure_limit_is_enforced() -> None:
         config=load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay:\n  max_in_flight_requests: 1\n"
         )
     )
@@ -151,7 +151,7 @@ async def test_queue_depth_limit_is_enforced() -> None:
         config=load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay:\n  max_queue_depth: 1\n"
         )
     )
@@ -172,7 +172,7 @@ async def test_heartbeat_timeout_is_detected() -> None:
     runtime = HostRelayRuntime(
         config=load_inline_config(
             "role: host\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay_link:\n  transport: tcp\n  bind_port: 9001\n"
             "relay:\n  heartbeat_timeout_seconds: 1\n"
         )
@@ -190,7 +190,7 @@ async def test_client_bind_retries_and_stale_rejection() -> None:
     host = HostRelayRuntime(
         config=load_inline_config(
             "role: host\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay_link:\n  transport: tcp\n  bind_port: 9001\n"
         )
     )
@@ -224,7 +224,7 @@ async def test_connection_timeout_is_enforced(monkeypatch: pytest.MonkeyPatch) -
     host = HostRelayRuntime(
         config=load_inline_config(
             "role: host\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay_link:\n  transport: tcp\n  bind_port: 9001\n"
         )
     )
@@ -272,7 +272,7 @@ async def test_transport_failures_are_mapped_to_structured_protocol_errors(
     host = HostRelayRuntime(
         config=load_inline_config(
             "role: host\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay_link:\n  transport: tcp\n  bind_port: 9001\n"
         )
     )
@@ -311,7 +311,7 @@ async def test_slow_consumer_rejection_does_not_corrupt_protocol_state() -> None
         config=load_inline_config(
             "role: direct\n"
             "mcp:\n  transport: stdio\n"
-            "executor:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
             "relay:\n  max_queue_depth: 1\n"
         )
     )
