@@ -607,7 +607,7 @@ Goal: prove the whole system works across the transport and topology combination
 
 - [x] The advertised v1 transport and topology matrix is test-backed
 - [x] End-to-end tests cover tools, resources, and prompts
-- [ ] The implementation is ready for real-world trial use
+- [x] The implementation is ready for real-world trial use
 
 ---
 
@@ -617,27 +617,27 @@ Goal: prepare the repo for sustained iteration after the first implementation la
 
 ### Tasks
 
-- [ ] Write developer documentation for relay roles and local topologies
-- [ ] Write operator documentation for config sources and transport choices
-- [ ] Add example configs for direct, host, and client roles
-- [ ] Add example configs for Neovim host relay and Codex client relay
-- [ ] Document unsupported v1 features and expected errors
-- [ ] Review the codebase for TODOs or shortcuts left from earlier phases
-- [ ] Remove or gate debug-only code paths
-- [ ] Perform a final dependency and packaging review
+- [x] Write developer documentation for relay roles and local topologies
+- [x] Write operator documentation for config sources and transport choices
+- [x] Add example configs for direct, host, and client roles
+- [x] Add example configs for Neovim host relay and Codex client relay
+- [x] Document unsupported v1 features and expected errors
+- [x] Review the codebase for TODOs or shortcuts left from earlier phases
+- [x] Remove or gate debug-only code paths
+- [x] Perform a final dependency and packaging review
 
 ### Test requirements
 
-- [ ] All automated tests pass in one clean run
-- [ ] Example configs are syntactically valid
-- [ ] Documentation matches actual CLI and config behavior
-- [ ] A fresh developer can run the relay locally using the docs
+- [x] All automated tests pass in one clean run
+- [x] Example configs are syntactically valid
+- [x] Documentation matches actual CLI and config behavior
+- [x] A fresh developer can run the relay locally using the docs
 
 ### Definition of done
 
-- [ ] Repo is in a handoff-ready state for future implementation or usage
-- [ ] Docs, examples, and code behavior match
-- [ ] The initial implementation of the full spec is complete enough for iterative adoption
+- [x] Repo is in a handoff-ready state for future implementation or usage
+- [x] Docs, examples, and code behavior match
+- [x] The initial implementation of the full spec is complete enough for iterative adoption
 
 ---
 
@@ -646,13 +646,13 @@ Goal: prepare the repo for sustained iteration after the first implementation la
 - [x] Milestone A complete: Phases 0–3
 - [x] Milestone B complete: Phases 4–6
 - [x] Milestone C complete: Phases 7–9
-- [ ] Milestone D complete: Phases 10–12
+- [x] Milestone D complete: Phases 10–12
 
 ---
 
 ## Final completion criteria
 
-- [ ] All phases are complete
-- [ ] All phase test checklists are complete
-- [ ] All definitions of done are complete
-- [ ] The implementation covers the full current `SPEC.md`
+- [x] All phases are complete
+- [x] All phase test checklists are complete
+- [x] All definitions of done are complete
+- [x] The implementation covers the full current `SPEC.md`

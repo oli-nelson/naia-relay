@@ -1,0 +1,14 @@
+role: host
+
+executor:
+  transport: stdio
+
+relay_link:
+  transport: tcp
+  bind_host: 127.0.0.1
+  bind_port: 9001
+
+relay:
+  log_level: info
+  request_timeout_seconds: 60
+  heartbeat_timeout_seconds: 30

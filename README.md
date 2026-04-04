@@ -2,6 +2,13 @@
 
 Python implementation of a bidirectional MCP relay described in `SPEC.md`.
 
+See `doc/` for the current developer and operator documentation set:
+
+- `doc/README.md`
+- `doc/developer-guide.md`
+- `doc/operator-guide.md`
+- `doc/unsupported-v1.md`
+
 ## Quick start
 
 ```bash
