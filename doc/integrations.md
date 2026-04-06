@@ -79,8 +79,7 @@ MCP client <--stdio MCP--> naia-relay <--tcp TEP--> Tool Executor
 
 Use:
 
-- `examples/direct/config.yaml`
-- `examples/scripts/run-direct.sh`
+- `examples/configs/direct.yaml`
 
 ### Host
 
@@ -90,8 +89,7 @@ Tool Executor <--stdio TEP--> host relay <--tcp RLP listener-->
 
 Use:
 
-- `examples/host/config.yaml`
-- `examples/scripts/run-host.sh`
+- `examples/configs/host.yaml`
 
 ### Client
 
@@ -101,8 +99,7 @@ Use:
 
 Use:
 
-- `examples/client/config.yaml`
-- `examples/scripts/run-client.sh`
+- `examples/configs/client.yaml`
 
 ## 6. Common integration advice
 

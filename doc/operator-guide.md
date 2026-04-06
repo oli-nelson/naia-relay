@@ -90,25 +90,25 @@ naia-relay --help
 Validate a config by starting and stopping once:
 
 ```bash
-naia-relay --config-file examples/direct/config.yaml --once
+naia-relay --config-file examples/configs/direct.yaml --once
 ```
 
 Run continuously:
 
 ```bash
-naia-relay --config-file examples/direct/config.yaml
+naia-relay --config-file examples/configs/direct.yaml
 ```
 
 Quick smoke test for a client config:
 
 ```bash
-naia-relay --config-file examples/client/config.yaml --once
+naia-relay --config-file examples/configs/client.yaml --once
 ```
 
 Write readiness metadata to a file:
 
 ```bash
-naia-relay --config-file examples/host/config.yaml --ready-file /tmp/naia-relay-ready.json
+naia-relay --config-file examples/configs/host.yaml --ready-file /tmp/naia-relay-ready.json
 ```
 
 ## Transport support
@@ -117,7 +117,7 @@ The current executable/runtime support is:
 
 | Side | Current executable/runtime support |
 | --- | --- |
-| MCP | `stdio` |
+| MCP | `stdio`, `http` |
 | Executor / TEP | `stdio`, `tcp` |
 | Relay link / RLP | `tcp` |
 
@@ -163,28 +163,26 @@ Supported stdio-based shapes include:
 
 Use:
 
-- `examples/direct/config.yaml`
-- `examples/scripts/run-direct.sh`
+- `examples/configs/direct.yaml`
 
 ### Host role
 
 Use:
 
-- `examples/host/config.yaml`
-- `examples/scripts/run-host.sh`
+- `examples/configs/host.yaml`
 
 ### Client role
 
 Use:
 
-- `examples/client/config.yaml`
-- `examples/scripts/run-client.sh`
+- `examples/configs/client.yaml`
 
 ### Tool executor examples
 
 Use:
 
 - `examples/tool-executors/README.md`
+- `examples/python/http_print_message_tool.py`
 
 This folder contains minimal host-side TEP executors in Python, C#, and Rust
 for both `stdio` and `tcp`.
@@ -194,35 +192,25 @@ for both `stdio` and `tcp`.
 ### Validate a direct relay config
 
 ```bash
-naia-relay --config-file examples/direct/config.yaml --once
+naia-relay --config-file examples/configs/direct.yaml --once
 ```
 
 ### Run a host relay for a Neovim-like executor
 
 ```bash
-naia-relay --config-file examples/host/config.yaml --ready-file /tmp/naia-relay-ready.json
+naia-relay --config-file examples/configs/host.yaml --ready-file /tmp/naia-relay-ready.json
 ```
 
 ### Run a client relay for a local MCP client
 
 ```bash
-naia-relay --config-file examples/client/config.yaml
+naia-relay --config-file examples/configs/client.yaml
 ```
 
-## Example shell scripts
-
-The repository includes runnable shell wrappers in `examples/scripts/`:
-
-- `run-direct.sh`
-- `run-host.sh`
-- `run-client.sh`
-
-Examples:
+### Run the self-contained HTTP demo
 
 ```bash
-examples/scripts/run-direct.sh --once
-examples/scripts/run-host.sh
-examples/scripts/run-client.sh
+python3 examples/python/http_print_message_tool.py
 ```
 
 See also:
@@ -290,6 +278,6 @@ The runtime logs include:
 
 1. create and activate `.venv`
 2. install with `pip install -e ".[dev]"`
-3. choose an example config from `examples/`
+3. choose an example config from `examples/configs/`
 4. validate it with `naia-relay --config-file ... --once`
 5. run the full suite with `ruff check . && pytest`

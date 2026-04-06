@@ -8,28 +8,17 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_all_example_configs_are_valid_yaml_for_the_loader() -> None:
-    example_files = sorted((REPO_ROOT / "examples").rglob("*.yaml"))
+    example_files = sorted((REPO_ROOT / "examples" / "configs").rglob("*.yaml"))
     assert example_files
 
     for path in example_files:
         config, _ = load_config(cli_config_file=path)
         assert config.role in {"direct", "host", "client"}
 
-
-def test_example_shell_scripts_exist_for_supported_modes() -> None:
-    scripts = {
-        "examples/scripts/run-direct.sh",
-        "examples/scripts/run-host.sh",
-        "examples/scripts/run-client.sh",
-    }
-
-    for relative_path in scripts:
-        assert (REPO_ROOT / relative_path).exists()
-
-
 def test_tool_executor_examples_exist_for_supported_languages() -> None:
     example_paths = {
         "examples/tool-executors/README.md",
+        "examples/python/http_print_message_tool.py",
         "examples/tool-executors/python/host_stdio_executor.py",
         "examples/tool-executors/python/host_tcp_executor.py",
         "examples/tool-executors/csharp/HostStdioExecutor/Program.cs",
@@ -60,8 +49,13 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     assert "naia-relay --help" in operator_doc
     assert "--config-file" in operator_doc
     assert 'pip install -e ".[dev]"' in operator_doc
-    assert "examples/scripts/run-direct.sh" in operator_doc
+    assert "examples/configs/direct.yaml" in operator_doc
+    assert "examples/configs/host.yaml" in operator_doc
+    assert "examples/configs/client.yaml" in operator_doc
     assert "examples/tool-executors/README.md" in (
+        REPO_ROOT / "README.md"
+    ).read_text(encoding="utf-8")
+    assert "examples/python/http_print_message_tool.py" in (
         REPO_ROOT / "README.md"
     ).read_text(encoding="utf-8")
     assert "tests/integration/" in developer_doc

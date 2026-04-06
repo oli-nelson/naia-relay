@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from aiohttp import web
+
 from naia_relay.config import ClientConfig, DirectConfig, HostConfig, RelayAppConfig
 from naia_relay.core import (
     SessionManager,
@@ -84,6 +86,7 @@ class BaseRelayRuntime:
     _requests_drained: asyncio.Event = field(init=False)
     resolved_listeners: dict[str, dict[str, Any]] = field(default_factory=dict)
     _tep_server: asyncio.AbstractServer | None = field(default=None, init=False, repr=False)
+    _mcp_http_runner: web.AppRunner | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.logger = logging.getLogger(f"naia_relay.runtime.{self.role}")
@@ -160,6 +163,9 @@ class BaseRelayRuntime:
             self._tep_server.close()
             await self._tep_server.wait_closed()
             self._tep_server = None
+        if self._mcp_http_runner is not None:
+            await self._mcp_http_runner.cleanup()
+            self._mcp_http_runner = None
         self.started = False
 
     def _ensure_started(self) -> None:
@@ -322,6 +328,9 @@ class BaseRelayRuntime:
             "host": host,
             "port": port,
         }
+
+    async def _start_mcp_http_listener(self, *, bind_host: str, bind_port: int) -> None:
+        await serve_mcp_http(self, bind_host=bind_host, bind_port=bind_port)
 
 
 @dataclass(slots=True)
@@ -1124,6 +1133,12 @@ async def run_from_config(
         bind_port = config.executor.bind_port
         if bind_port is not None:
             await runtime._start_tep_listener(bind_host=bind_host, bind_port=bind_port)
+    if getattr(config, "mcp", None) is not None and config.mcp.transport == "http":
+        bind_host = config.mcp.host or "127.0.0.1"
+        bind_port = config.mcp.port
+        if bind_port is None:
+            raise ConfigurationError("mcp.port is required when mcp.transport=http")
+        await runtime._start_mcp_http_listener(bind_host=bind_host, bind_port=bind_port)
     if isinstance(runtime, HostRelayRuntime) and config.relay_link.transport == "tcp":
         bind_port = config.relay_link.bind_port
         if bind_port is not None:
@@ -1135,19 +1150,36 @@ async def run_from_config(
     if once:
         await runtime.stop()
     else:
-        if hasattr(runtime, "handle_mcp_message") and getattr(config, "mcp", None) is not None:
+        has_mcp = (
+            hasattr(runtime, "handle_mcp_message")
+            and getattr(config, "mcp", None) is not None
+        )
+        has_executor = (
+            hasattr(runtime, "handle_tep_message")
+            and getattr(config, "executor", None) is not None
+        )
+
+        if has_mcp and has_executor and config.executor.transport == "stdio":
             if config.mcp.transport == "stdio":
                 await serve_mcp_stdio(runtime)
+            else:
+                await serve_tep_stdio(runtime)
+        elif has_mcp:
+            if config.mcp.transport == "stdio":
+                await serve_mcp_stdio(runtime)
+            elif config.mcp.transport == "http":
+                try:
+                    await asyncio.Event().wait()
+                except asyncio.CancelledError:  # pragma: no cover - lifecycle convenience
+                    await runtime.stop()
+                    raise
             else:
                 try:
                     await asyncio.Event().wait()
                 except asyncio.CancelledError:  # pragma: no cover - lifecycle convenience
                     await runtime.stop()
                     raise
-        elif (
-            hasattr(runtime, "handle_tep_message")
-            and getattr(config, "executor", None) is not None
-        ):
+        elif has_executor:
             if config.executor.transport == "stdio":
                 await serve_tep_stdio(runtime)
             else:
@@ -1192,6 +1224,76 @@ async def serve_mcp_stdio(
     finally:
         await adapter.stop()
         await runtime.stop()
+
+
+async def serve_mcp_http(
+    runtime: BaseRelayRuntime,
+    *,
+    bind_host: str,
+    bind_port: int,
+) -> None:
+    if not hasattr(runtime, "handle_mcp_message"):
+        raise ConfigurationError("Runtime does not support MCP HTTP serving.")
+
+    app = web.Application()
+
+    async def handle_post(request: web.Request) -> web.StreamResponse:
+        try:
+            payload = await request.json()
+        except Exception:
+            return web.json_response(
+                {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {
+                        "code": -32700,
+                        "message": "Invalid JSON request body",
+                    },
+                },
+                status=400,
+            )
+        status, response = await _handle_mcp_http_payload(runtime, payload)
+        if response is None:
+            return web.Response(status=status)
+        return web.json_response(response, status=status)
+
+    app.router.add_post("/", handle_post)
+    app.router.add_post("/mcp", handle_post)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, bind_host, bind_port)
+    await site.start()
+    runtime._mcp_http_runner = runner
+    runtime.resolved_listeners["mcp"] = {
+        "transport": "http",
+        "host": bind_host,
+        "port": bind_port,
+    }
+
+
+async def _handle_mcp_http_payload(
+    runtime: BaseRelayRuntime,
+    payload: Any,
+) -> tuple[int, dict[str, Any] | None]:
+    if not hasattr(runtime, "handle_mcp_message"):
+        raise ConfigurationError("Runtime does not support MCP HTTP serving.")
+    if not isinstance(payload, dict):
+        return (
+            400,
+            {
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {
+                    "code": -32600,
+                    "message": "HTTP MCP payload must be a JSON object",
+                },
+            },
+        )
+
+    response = await runtime.handle_mcp_message(payload)  # type: ignore[attr-defined]
+    if response is None:
+        return (202, None)
+    return (200, response)
 
 
 async def _handle_tep_message_with_runtime(

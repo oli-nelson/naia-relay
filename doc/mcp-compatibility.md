@@ -8,8 +8,12 @@ implements.
 The main MCP runtime path in the executable is:
 
 - `MCP stdio`
+- `MCP http`
 
-That is the path used by Codex-like clients in the current implementation.
+`MCP stdio` is the main path used by Codex-like clients in the current
+implementation.
+
+`MCP http` is available as a simple request/response runtime path.
 
 ## Implemented MCP areas
 

@@ -50,7 +50,7 @@ Current strengths:
 
 - direct mode
 - host/client bridged mode
-- MCP over stdio in the executable runtime
+- MCP over stdio and HTTP in the executable runtime
 - TEP over stdio and TCP in the executable runtime
 - RLP over TCP in the executable runtime
 - dynamic tool registration and bridged execution forwarding
@@ -155,13 +155,14 @@ The most important currently runnable paths are:
 
 | Side | Current executable/runtime support |
 | --- | --- |
-| MCP | `stdio` |
+| MCP | `stdio`, `http` |
 | TEP | `stdio`, `tcp` |
 | RLP | `tcp` |
 
 Notes:
 
 - `MCP stdio` is the main agent-facing runtime path used by Codex-like clients.
+- `MCP http` is available as a simple request/response runtime path.
 - `TEP stdio` and `TEP tcp` are the main executor-facing runtime paths.
 - `RLP tcp` is the main relay-to-relay runtime path.
 - Other transport adapters exist in the codebase, but should be treated as
@@ -334,9 +335,11 @@ relay:
 
 More example configs live in:
 
-- [`examples/direct/config.yaml`](examples/direct/config.yaml)
-- [`examples/host/config.yaml`](examples/host/config.yaml)
-- [`examples/client/config.yaml`](examples/client/config.yaml)
+- [`examples/configs/direct.yaml`](examples/configs/direct.yaml)
+- [`examples/configs/host.yaml`](examples/configs/host.yaml)
+- [`examples/configs/client.yaml`](examples/configs/client.yaml)
+- [`examples/python/http_print_message_tool.py`](examples/python/http_print_message_tool.py) —
+  launches `naia-relay`, registers a simple tool over stdio, and exposes MCP over HTTP
 - [`examples/tool-executors/README.md`](examples/tool-executors/README.md) — host-side
   tool executor examples in Python, C#, and Rust for stdio and TCP TEP
 
@@ -471,7 +474,7 @@ Claude Code MCP docs:
 For setups where a parent process needs to learn runtime metadata such as a dynamically assigned TCP port, `naia-relay` can write a readiness file:
 
 ```bash
-naia-relay --config-file examples/host/config.yaml --ready-file /tmp/naia-relay-ready.json
+naia-relay --config-file examples/configs/host.yaml --ready-file /tmp/naia-relay-ready.json
 ```
 
 This is especially useful for host mode with `bind_port: 0`.

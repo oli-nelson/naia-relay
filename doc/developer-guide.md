@@ -188,9 +188,10 @@ pytest
 
 See the `examples/` folder for:
 
-- `examples/direct/config.yaml`
-- `examples/host/config.yaml`
-- `examples/client/config.yaml`
+- `examples/configs/direct.yaml`
+- `examples/configs/host.yaml`
+- `examples/configs/client.yaml`
+- `examples/python/http_print_message_tool.py`
 - `examples/tool-executors/README.md`
 
 See also:

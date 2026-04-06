@@ -60,7 +60,7 @@ For a simpler protocol reference and more examples, see:
 Use the built-in client example config:
 
 ```bash
-naia-relay --config-file examples/client/config.yaml
+naia-relay --config-file examples/configs/client.yaml
 ```
 
 This gives you:

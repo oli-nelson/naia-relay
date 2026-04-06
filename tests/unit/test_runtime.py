@@ -15,6 +15,7 @@ from naia_relay.runtime import (
     serve_mcp_stdio,
     serve_tep_stdio,
 )
+from naia_relay.runtime.relay import _handle_mcp_http_payload
 
 
 def load_inline_config(text: str):
@@ -276,6 +277,123 @@ async def test_executor_tcp_listener_writes_readiness_file(
 
 
 @pytest.mark.asyncio
+async def test_run_from_config_starts_mcp_http_listener(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started: list[tuple[str, int]] = []
+
+    async def fake_serve_mcp_http(runtime, *, bind_host: str, bind_port: int) -> None:
+        started.append((bind_host, bind_port))
+        runtime.resolved_listeners["mcp"] = {
+            "transport": "http",
+            "host": bind_host,
+            "port": bind_port,
+        }
+
+    monkeypatch.setattr("naia_relay.runtime.relay.serve_mcp_http", fake_serve_mcp_http)
+    config = load_inline_config(
+        "role: direct\n"
+        "mcp:\n  transport: http\n  host: 127.0.0.1\n  port: 18080\n"
+        "executor:\n  transport: tcp\n  port: 9002\n"
+    )
+
+    runtime = await run_from_config(config, once=True)
+
+    assert runtime.role == "direct"
+    assert started == [("127.0.0.1", 18080)]
+    assert runtime.resolved_listeners["mcp"]["transport"] == "http"
+
+
+@pytest.mark.asyncio
+async def test_serve_mcp_http_registers_root_and_mcp_routes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    routes: list[tuple[str, object]] = []
+
+    class FakeRouter:
+        def add_post(self, path: str, handler: object) -> None:
+            routes.append((path, handler))
+
+    class FakeApp:
+        def __init__(self) -> None:
+            self.router = FakeRouter()
+
+    class FakeRunner:
+        def __init__(self, app: object) -> None:
+            self.app = app
+
+        async def setup(self) -> None:
+            return None
+
+        async def cleanup(self) -> None:
+            return None
+
+    class FakeSite:
+        def __init__(self, runner: object, host: str, port: int) -> None:
+            self.runner = runner
+            self.host = host
+            self.port = port
+
+        async def start(self) -> None:
+            return None
+
+    monkeypatch.setattr("naia_relay.runtime.relay.web.Application", FakeApp)
+    monkeypatch.setattr("naia_relay.runtime.relay.web.AppRunner", FakeRunner)
+    monkeypatch.setattr("naia_relay.runtime.relay.web.TCPSite", FakeSite)
+
+    runtime = create_runtime(
+        load_inline_config(
+            "role: direct\n"
+            "mcp:\n  transport: http\n  host: 127.0.0.1\n  port: 18085\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
+        )
+    )
+    await runtime.start()
+    try:
+        from naia_relay.runtime import serve_mcp_http
+
+        await serve_mcp_http(runtime, bind_host="127.0.0.1", bind_port=18085)
+    finally:
+        await runtime.stop()
+
+    assert [path for path, _ in routes] == ["/", "/mcp"]
+
+
+@pytest.mark.asyncio
+async def test_run_from_config_with_mcp_http_and_executor_stdio_serves_tep_stdio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_http: list[tuple[str, int]] = []
+    served_tep: list[str] = []
+
+    async def fake_serve_mcp_http(runtime, *, bind_host: str, bind_port: int) -> None:
+        started_http.append((bind_host, bind_port))
+        runtime.resolved_listeners["mcp"] = {
+            "transport": "http",
+            "host": bind_host,
+            "port": bind_port,
+        }
+
+    async def fake_serve_tep_stdio(runtime, **_: object) -> None:
+        served_tep.append(runtime.role)
+        await runtime.stop()
+
+    monkeypatch.setattr("naia_relay.runtime.relay.serve_mcp_http", fake_serve_mcp_http)
+    monkeypatch.setattr("naia_relay.runtime.relay.serve_tep_stdio", fake_serve_tep_stdio)
+    config = load_inline_config(
+        "role: direct\n"
+        "mcp:\n  transport: http\n  host: 127.0.0.1\n  port: 18084\n"
+        "executor:\n  transport: stdio\n"
+    )
+
+    runtime = await run_from_config(config, once=False)
+
+    assert runtime.role == "direct"
+    assert started_http == [("127.0.0.1", 18084)]
+    assert served_tep == ["direct"]
+
+
+@pytest.mark.asyncio
 async def test_serve_mcp_stdio_returns_newline_delimited_initialize_response() -> None:
     runtime = create_runtime(
         load_inline_config(
@@ -309,6 +427,76 @@ async def test_serve_mcp_stdio_returns_newline_delimited_initialize_response() -
 
     assert writer.buffer.endswith(b"\n")
     assert b'"protocolVersion":"2025-06-18"' in writer.buffer
+
+
+@pytest.mark.asyncio
+async def test_mcp_http_payload_returns_initialize_response() -> None:
+    runtime = create_runtime(
+        load_inline_config(
+            "role: direct\n"
+            "mcp:\n  transport: http\n  host: 127.0.0.1\n  port: 18081\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
+        )
+    )
+
+    await runtime.start()
+    try:
+        status, payload = await _handle_mcp_http_payload(
+            runtime,
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {"protocolVersion": "2025-06-18", "capabilities": {}},
+            },
+        )
+        assert status == 200
+        assert payload is not None
+        assert payload["result"]["protocolVersion"] == "2025-06-18"
+    finally:
+        await runtime.stop()
+
+
+@pytest.mark.asyncio
+async def test_mcp_http_payload_returns_accepted_for_notifications() -> None:
+    runtime = create_runtime(
+        load_inline_config(
+            "role: direct\n"
+            "mcp:\n  transport: http\n  host: 127.0.0.1\n  port: 18082\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
+        )
+    )
+
+    await runtime.start()
+    try:
+        status, payload = await _handle_mcp_http_payload(
+            runtime,
+            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        )
+        assert status == 202
+        assert payload is None
+    finally:
+        await runtime.stop()
+
+
+@pytest.mark.asyncio
+async def test_mcp_http_payload_rejects_non_object_input() -> None:
+    runtime = create_runtime(
+        load_inline_config(
+            "role: direct\n"
+            "mcp:\n  transport: http\n  host: 127.0.0.1\n  port: 18083\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
+        )
+    )
+
+    await runtime.start()
+    try:
+        status, payload = await _handle_mcp_http_payload(runtime, [])
+        assert status == 400
+        assert payload is not None
+        assert payload["error"]["code"] == -32600
+    finally:
+        await runtime.stop()
 
 
 @pytest.mark.asyncio
