@@ -1,107 +1,186 @@
 # Getting Started
 
-This walkthrough gives you a minimal local setup that proves the core relay
-path works:
+This walkthrough starts with the simplest useful setup:
 
-1. start a host relay
-2. start a simple Tool Executor
-3. start a client relay
-4. confirm that tools can be discovered and executed through the bridge
-
-The example uses:
-
-- host relay over `TEP tcp` + `RLP tcp`
-- client relay over `MCP stdio` + `RLP tcp`
-- the Python TCP example executor from `examples/tool-executors/`
-
-## 1. Start the host relay
-
-Use an inline host config so the executor can connect over TCP:
-
-```bash
-naia-relay --config-yaml '
-role: host
-executor:
-  transport: tcp
-  bind_host: 127.0.0.1
-  bind_port: 7001
-relay_link:
-  transport: tcp
-  bind_host: 127.0.0.1
-  bind_port: 9001
-' --ready-file /tmp/naia-relay-ready.json
+```text
+Tool Executor <--stdio TEP--> naia-relay <--http MCP--> MCP client
 ```
 
-This gives you:
+That keeps everything in a single relay process and proves the core path first:
 
-- a long-lived host relay
-- a readiness file containing the resolved RLP listener endpoint
+1. a Tool Executor registers a tool over **TEP**
+2. `naia-relay` exposes that tool over **MCP**
+3. an MCP client discovers and calls it over **HTTP**
 
-If you want to inspect the readiness file:
+If you later need a long-lived host relay plus short-lived client relays, move on
+to the bridged docs after this guide.
+
+## What you'll run
+
+This guide uses the included example:
+
+- [`examples/python/http_print_message_tool.py`](../examples/python/http_print_message_tool.py)
+
+That script:
+
+- launches `naia-relay` in **direct** mode
+- connects to it over **stdio TEP**
+- registers a `print_message` tool
+- exposes MCP over **HTTP** on `127.0.0.1:8181`
+
+## 1. Start the example
+
+From the repo root:
 
 ```bash
-cat /tmp/naia-relay-ready.json
+python3 examples/python/http_print_message_tool.py
 ```
 
-## 2. Attach a Tool Executor to the host
+Expected output:
 
-In a second terminal, connect the example TCP executor:
+```text
+HTTP MCP server listening on http://127.0.0.1:8181/mcp
+Registered tool: print_message
+```
+
+At this point the flow looks like:
+
+```text
+example Tool Executor <--stdio TEP--> naia-relay <--http MCP--> your MCP client
+```
+
+## 2. Verify MCP initialization
+
+In a second terminal, send an MCP `initialize` request:
 
 ```bash
-python3 examples/tool-executors/python/host_tcp_executor.py --host 127.0.0.1 --port 7001
+curl -s http://127.0.0.1:8181/mcp \
+  -H 'content-type: application/json' \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2025-06-18",
+      "capabilities": {}
+    }
+  }'
 ```
 
-For a simpler protocol reference and more examples, see:
+You should get a JSON-RPC response with a `result` containing:
 
-- [../examples/tool-executors/README.md](../examples/tool-executors/README.md)
+- `protocolVersion`
+- `capabilities`
+- `serverInfo`
 
-## 3. Start a client relay
+## 3. Verify tool discovery
 
-Use the built-in client example config:
+List tools:
 
 ```bash
-naia-relay --config-file examples/configs/client.yaml
+curl -s http://127.0.0.1:8181/mcp \
+  -H 'content-type: application/json' \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/list"
+  }'
 ```
 
-This gives you:
+You should see a tool named `print_message`.
 
-- an MCP-facing relay over `stdio`
-- an upstream connection to the host relay over `RLP tcp`
+## 4. Call the tool
 
-## 4. Point your MCP client at the client relay
+Invoke the registered tool:
 
-Typical local MCP clients launch `naia-relay` as a command and use:
+```bash
+curl -s http://127.0.0.1:8181/mcp \
+  -H 'content-type: application/json' \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "print_message",
+      "arguments": {
+        "message": "hello from MCP"
+      }
+    }
+  }'
+```
 
-- `mcp.transport: stdio`
-- `relay_link.transport: tcp`
+Expected behavior:
+
+- the example process prints something like:
+
+  ```text
+  print_message tool invoked with: hello from MCP
+  ```
+
+- the HTTP response contains MCP tool result content with the echoed message
+
+## 5. Point a real MCP client at it
+
+Any MCP client that supports HTTP MCP can now talk to:
+
+- `http://127.0.0.1:8181/mcp`
 
 For client-specific setup examples, see:
 
 - [integrations.md](integrations.md)
 
-## 5. Verify the path end to end
+## What just happened
 
-At this point the flow should look like:
+The example script starts `naia-relay` with this direct-mode shape:
 
-```text
-Tool Executor <--tcp TEP--> host relay <--tcp RLP--> client relay <--stdio MCP--> MCP client
+```yaml
+role: direct
+
+mcp:
+  transport: http
+  host: 127.0.0.1
+  port: 8181
+
+executor:
+  transport: stdio
 ```
 
-Expected behavior:
+So:
 
-- the MCP client can list tools
-- the example `echo` tool should appear
-- calling `echo` should return text produced by the example executor
+- the **executor side** is local stdio TEP
+- the **client side** is HTTP MCP
+- there is no host/client relay split yet
+
+## When to use the more complex bridged setup
+
+Use the two-relay host/client topology when you need things like:
+
+- a long-lived tool host
+- a stable MCP client config across many agent sessions
+- relay-to-relay forwarding over **RLP**
+
+That topology looks like:
+
+```text
+Tool Executor <--stdio|tcp TEP--> host relay <--tcp RLP--> client relay <--stdio|http MCP--> MCP client
+```
+
+For that flow, continue with:
+
+- [operator-guide.md](operator-guide.md)
+- [integrations.md](integrations.md)
+- [readiness-file.md](readiness-file.md)
 
 ## If something fails
 
-The fastest places to look are:
+Check:
 
-- the host relay stderr logs
-- the client relay stderr logs
-- the readiness file contents
+- the example process output
+- `naia-relay` stderr logs
+- whether port `8181` is already in use
 
 See also:
 
 - [troubleshooting.md](troubleshooting.md)
-- [operator-guide.md](operator-guide.md)
+- [mcp-compatibility.md](mcp-compatibility.md)
+- [../examples/tool-executors/README.md](../examples/tool-executors/README.md)
