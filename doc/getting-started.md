@@ -1,7 +1,7 @@
 # Getting Started
 
-This walkthrough gives you a minimal local setup that proves the core relay path
- works:
+This walkthrough gives you a minimal local setup that proves the core relay
+path works:
 
 1. start a host relay
 2. start a simple Tool Executor

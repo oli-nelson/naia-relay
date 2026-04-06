@@ -62,10 +62,15 @@ Official MCP reference:
 
 ## Practical note
 
-Although the repository contains other transport-related building blocks, the
-main MCP path you should rely on today is:
+The main MCP paths you should rely on today are:
 
 - MCP client ↔ `stdio` ↔ `naia-relay`
+- MCP client ↔ `http` ↔ `naia-relay`
+
+For HTTP MCP, the runtime currently accepts POST requests on:
+
+- `/`
+- `/mcp`
 
 For operator guidance, see:
 

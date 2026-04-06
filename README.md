@@ -224,7 +224,7 @@ Neovim <--stdio TEP--> host relay <--tcp RLP--> client relay <--stdio MCP--> Cod
 Another valid bridged example is:
 
 ```text
-Tool Executor <--tcp TEP--> host relay <--stdio RLP--> client relay <--stdio MCP--> Codex
+Tool Executor <--tcp TEP--> host relay <--tcp RLP--> client relay <--stdio MCP--> Codex
 ```
 
 For the current executable/runtime support matrix, see:
@@ -264,17 +264,17 @@ In practice, this lets an editor or automation runtime:
 
 ## Transport notes
 
-Supported transports in v1:
+Current executable/runtime support:
 
-- **MCP side:** `stdio`, `tcp`, `http`
-- **TEP side:** `stdio`, `tcp`, `http`
-- **RLP side:** `stdio`, `tcp`
+- **MCP side:** `stdio`, `http`
+- **TEP side:** `stdio`, `tcp`
+- **RLP side:** `tcp`
 
 Important:
 
 - **MCP over stdio** uses official MCP newline-delimited JSON framing
+- **MCP over HTTP** accepts POST requests on `/` and `/mcp`
 - **TEP over stdio** uses newline-delimited JSON
-- **RLP over stdio** uses newline-delimited JSON
 - a single **direct-mode** process does **not** support using stdio for both MCP and TEP on the same shared stdin/stdout pair
 
 ---
