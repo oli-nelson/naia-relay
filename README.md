@@ -1,6 +1,6 @@
 # naia-relay
 
-`naia-relay` is a flexible Python relay for the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) that lets agents, tool executors, and other relays talk to each other across multiple transports.
+`naia-relay` is a flexible Python server/relay for the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) that lets agents, tool executors, and other relays talk to each other across multiple transports.
 
 At a high level, it bridges three protocols:
 
