@@ -21,8 +21,6 @@ def test_example_shell_scripts_exist_for_supported_modes() -> None:
         "examples/scripts/run-direct.sh",
         "examples/scripts/run-host.sh",
         "examples/scripts/run-client.sh",
-        "examples/scripts/run-neovim-host.sh",
-        "examples/scripts/run-codex-client.sh",
     }
 
     for relative_path in scripts:
@@ -60,8 +58,6 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     assert "naia-relay --help" in operator_doc
     assert "--config-file" in operator_doc
     assert 'pip install -e ".[dev]"' in operator_doc
-    assert "examples/neovim-host/config.yaml" in operator_doc
-    assert "examples/codex-client/config.yaml" in operator_doc
     assert "examples/scripts/run-direct.sh" in operator_doc
     assert "examples/tool-executors/README.md" in (
         REPO_ROOT / "README.md"

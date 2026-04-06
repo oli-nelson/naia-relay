@@ -91,9 +91,7 @@ Tool Executor <--stdio TEP--> host relay <--tcp RLP listener-->
 Use:
 
 - `examples/host/config.yaml`
-- `examples/neovim-host/config.yaml`
 - `examples/scripts/run-host.sh`
-- `examples/scripts/run-neovim-host.sh`
 
 ### Client
 
@@ -104,9 +102,7 @@ Use:
 Use:
 
 - `examples/client/config.yaml`
-- `examples/codex-client/config.yaml`
 - `examples/scripts/run-client.sh`
-- `examples/scripts/run-codex-client.sh`
 
 ## 6. Common integration advice
 

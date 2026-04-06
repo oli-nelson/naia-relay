@@ -191,8 +191,7 @@ See the `examples/` folder for:
 - `examples/direct/config.yaml`
 - `examples/host/config.yaml`
 - `examples/client/config.yaml`
-- `examples/neovim-host/config.yaml`
-- `examples/codex-client/config.yaml`
+- `examples/tool-executors/README.md`
 
 See also:
 

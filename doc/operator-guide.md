@@ -96,7 +96,7 @@ naia-relay --config-file examples/client/config.yaml --once
 Write readiness metadata to a file:
 
 ```bash
-naia-relay --config-file examples/neovim-host/config.yaml --ready-file /tmp/naia-relay-ready.json
+naia-relay --config-file examples/host/config.yaml --ready-file /tmp/naia-relay-ready.json
 ```
 
 ## Transport support
@@ -180,25 +180,6 @@ Use:
 - `examples/client/config.yaml`
 - `examples/scripts/run-client.sh`
 
-### Neovim host relay
-
-Use:
-
-- `examples/neovim-host/config.yaml`
-- `examples/scripts/run-neovim-host.sh`
-
-This is the long-lived relay that stays attached to the Neovim Tool Executor.
-
-### Codex client relay
-
-Use:
-
-- `examples/codex-client/config.yaml`
-- `examples/scripts/run-codex-client.sh`
-
-This is the short-lived relay started for a Codex session. It uses MCP over
-`stdio` and connects upstream to the long-lived host relay over RLP.
-
 ### Tool executor examples
 
 Use:
@@ -219,13 +200,13 @@ naia-relay --config-file examples/direct/config.yaml --once
 ### Run a host relay for a Neovim-like executor
 
 ```bash
-naia-relay --config-file examples/neovim-host/config.yaml --ready-file /tmp/naia-relay-ready.json
+naia-relay --config-file examples/host/config.yaml --ready-file /tmp/naia-relay-ready.json
 ```
 
 ### Run a client relay for a local MCP client
 
 ```bash
-naia-relay --config-file examples/codex-client/config.yaml
+naia-relay --config-file examples/client/config.yaml
 ```
 
 ## Example shell scripts
@@ -235,8 +216,6 @@ The repository includes runnable shell wrappers in `examples/scripts/`:
 - `run-direct.sh`
 - `run-host.sh`
 - `run-client.sh`
-- `run-neovim-host.sh`
-- `run-codex-client.sh`
 
 Examples:
 
@@ -244,8 +223,6 @@ Examples:
 examples/scripts/run-direct.sh --once
 examples/scripts/run-host.sh
 examples/scripts/run-client.sh
-examples/scripts/run-neovim-host.sh
-examples/scripts/run-codex-client.sh
 ```
 
 See also:

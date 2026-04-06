@@ -299,8 +299,6 @@ More example configs live in:
 - [`examples/direct/config.yaml`](examples/direct/config.yaml)
 - [`examples/host/config.yaml`](examples/host/config.yaml)
 - [`examples/client/config.yaml`](examples/client/config.yaml)
-- [`examples/neovim-host/config.yaml`](examples/neovim-host/config.yaml)
-- [`examples/codex-client/config.yaml`](examples/codex-client/config.yaml)
 - [`examples/tool-executors/README.md`](examples/tool-executors/README.md) — host-side
   tool executor examples in Python, C#, and Rust for stdio and TCP TEP
 
@@ -440,7 +438,7 @@ Claude Code MCP docs:
 For setups where a parent process needs to learn runtime metadata such as a dynamically assigned TCP port, `naia-relay` can write a readiness file:
 
 ```bash
-naia-relay --config-file examples/neovim-host/config.yaml --ready-file /tmp/naia-relay-ready.json
+naia-relay --config-file examples/host/config.yaml --ready-file /tmp/naia-relay-ready.json
 ```
 
 This is especially useful for host mode with `bind_port: 0`.
