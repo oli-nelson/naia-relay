@@ -49,6 +49,8 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     docs_index = (REPO_ROOT / "doc" / "README.md").read_text(encoding="utf-8")
     integrations_doc = (REPO_ROOT / "doc" / "integrations.md").read_text(encoding="utf-8")
     troubleshooting_doc = (REPO_ROOT / "doc" / "troubleshooting.md").read_text(encoding="utf-8")
+    getting_started_doc = (REPO_ROOT / "doc" / "getting-started.md").read_text(encoding="utf-8")
+    mcp_doc = (REPO_ROOT / "doc" / "mcp-compatibility.md").read_text(encoding="utf-8")
     contributing_doc = (REPO_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
     changelog_doc = (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     tep_doc = (REPO_ROOT / "doc" / "tep-protocol.md").read_text(encoding="utf-8")
@@ -64,8 +66,13 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     ).read_text(encoding="utf-8")
     assert "tests/integration/" in developer_doc
     assert "SPEC.md" in docs_index
+    assert "getting-started.md" in docs_index
+    assert "mcp-compatibility.md" in docs_index
     assert "troubleshooting.md" in docs_index
     assert "integrations.md" in docs_index
+    assert "host_tcp_executor.py" in getting_started_doc
+    assert "2025-06-18" in mcp_doc
+    assert "sampling/createMessage" in mcp_doc
     assert "Codex + host relay" in integrations_doc
     assert (
         "Tools are visible, but calling them does not execute the real tool"

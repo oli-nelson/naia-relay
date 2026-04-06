@@ -17,6 +17,16 @@ Expected result:
 
 ## Transport limitations
 
+The repository contains some lower-level transport code beyond the main
+executable/runtime paths. This document is about what users should currently
+rely on in the executable.
+
+The current recommended runtime paths are:
+
+- MCP over `stdio`
+- TEP over `stdio` or `tcp`
+- RLP over `tcp`
+
 ### RLP over HTTP
 
 Not supported in v1.

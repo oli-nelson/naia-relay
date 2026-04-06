@@ -33,6 +33,7 @@ It is built for setups like:
 If you want the shortest path into the rest of the docs, start with:
 
 - [Operator guide](doc/operator-guide.md)
+- [Getting started walkthrough](doc/getting-started.md)
 - [Integrations guide](doc/integrations.md)
 - [Troubleshooting](doc/troubleshooting.md)
 
@@ -49,10 +50,11 @@ Current strengths:
 
 - direct mode
 - host/client bridged mode
-- MCP over stdio, TCP, and HTTP
-- TEP over stdio, TCP, and HTTP
-- RLP over stdio and TCP
+- MCP over stdio in the executable runtime
+- TEP over stdio and TCP in the executable runtime
+- RLP over TCP in the executable runtime
 - dynamic tool registration and bridged execution forwarding
+- transport adapter building blocks for `stdio`, `tcp`, and `http`
 
 Current v1 limitations:
 
@@ -88,7 +90,7 @@ It is probably **not** the right fit if you only need:
 
 - bridges **MCP**, **TEP**, and **RLP**
 - supports **direct**, **host**, and **client** roles
-- transport-adapter architecture for `stdio`, `tcp`, and `http` (where supported)
+- clean separation between protocol semantics and transport adapters
 - dynamic tool, resource, and prompt registration
 - readiness-file support for dynamic listener discovery
 - subprocess and integration test coverage for core local topologies
@@ -117,8 +119,16 @@ That means agents can see and call tools over MCP even when the real tool implem
 
 ### Install globally with `pipx`
 
+From a local clone:
+
 ```bash
 pipx install .
+```
+
+Directly from GitHub:
+
+```bash
+pipx install git+https://github.com/oli-nelson/naia-relay.git
 ```
 
 After installation:
@@ -136,6 +146,36 @@ pipx install .
 
 ---
 
+## Current runtime transport support
+
+The repository includes transport adapters and protocol helpers for more
+combinations than the executable currently serves directly.
+
+The most important currently runnable paths are:
+
+| Side | Current executable/runtime support |
+| --- | --- |
+| MCP | `stdio` |
+| TEP | `stdio`, `tcp` |
+| RLP | `tcp` |
+
+Notes:
+
+- `MCP stdio` is the main agent-facing runtime path used by Codex-like clients.
+- `TEP stdio` and `TEP tcp` are the main executor-facing runtime paths.
+- `RLP tcp` is the main relay-to-relay runtime path.
+- Other transport adapters exist in the codebase, but should be treated as
+  lower-level implementation building blocks until they are wired into the
+  executable runtime more completely.
+
+See also:
+
+- [Operator guide](doc/operator-guide.md)
+- [MCP compatibility](doc/mcp-compatibility.md)
+- [Unsupported / deferred v1 features](doc/unsupported-v1.md)
+
+---
+
 ## How it works
 
 `naia-relay` can run in three roles.
@@ -149,13 +189,6 @@ MCP client <--stdio MCP--> naia-relay <--tcp TEP--> Tool Executor
 ```
 
 Use this when you just want one relay process in the middle.
-
-Other valid direct-mode examples include:
-
-```text
-MCP client <--http MCP--> naia-relay <--stdio TEP--> Tool Executor
-MCP client <--tcp MCP--> naia-relay <--http TEP--> Tool Executor
-```
 
 ### Host mode
 
@@ -192,6 +225,11 @@ Another valid bridged example is:
 ```text
 Tool Executor <--tcp TEP--> host relay <--stdio RLP--> client relay <--stdio MCP--> Codex
 ```
+
+For the current executable/runtime support matrix, see:
+
+- [MCP compatibility](doc/mcp-compatibility.md)
+- [Operator guide](doc/operator-guide.md)
 
 ---
 

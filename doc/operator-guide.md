@@ -2,6 +2,10 @@
 
 This guide is for running `naia-relay` locally as an executable.
 
+If you want one concrete copy/paste setup first, start with:
+
+- [getting-started.md](getting-started.md)
+
 ## Most common deployment patterns
 
 ### Direct relay
@@ -42,8 +46,16 @@ pip install .
 
 ### Isolated install with pipx
 
+From a local clone:
+
 ```bash
 pipx install .
+```
+
+Directly from GitHub:
+
+```bash
+pipx install git+https://github.com/oli-nelson/naia-relay.git
 ```
 
 After installation, the executable is:
@@ -101,32 +113,20 @@ naia-relay --config-file examples/host/config.yaml --ready-file /tmp/naia-relay-
 
 ## Transport support
 
-### MCP side
+The current executable/runtime support is:
 
-Supported in v1:
+| Side | Current executable/runtime support |
+| --- | --- |
+| MCP | `stdio` |
+| Executor / TEP | `stdio`, `tcp` |
+| Relay link / RLP | `tcp` |
 
-- `stdio`
-- `tcp`
-- `http`
+Important note:
 
-### Executor side
-
-Supported in v1:
-
-- `stdio`
-- `tcp`
-- `http`
-
-### Relay link side
-
-Supported in v1:
-
-- `stdio`
-- `tcp`
-
-Not supported in v1:
-
-- `http`
+- the repository contains additional transport adapters and protocol helpers
+  beyond this matrix
+- treat those as lower-level building blocks unless they are explicitly called
+  out as runnable in the current operator docs
 
 ## Stdio protocol mapping
 
