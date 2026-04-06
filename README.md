@@ -2,6 +2,21 @@
 
 `naia-relay` is a flexible Python relay for the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) that lets agents, tool executors, and other relays talk to each other across multiple transports.
 
+At a high level, it bridges three protocols:
+
+- **MCP** for agent-facing communication
+  - this is the protocol used by MCP clients such as Codex
+  - from the agent's perspective, `naia-relay` behaves like an MCP-capable peer
+- **TEP** (Tool Executor Protocol) for executor-facing communication
+  - this is the protocol used by tool hosts such as Neovim to register tools, receive execution requests, and return results
+- **RLP** (Relay Link Protocol) for relay-to-relay communication
+  - this is the protocol used when one relay instance mirrors or forwards state and execution through another relay instance
+
+That means `naia-relay` can sit between:
+
+- an MCP client and a tool executor directly, or
+- a long-lived host relay and one or more short-lived client relays
+
 It is built for setups like:
 
 - **Codex ↔ your local tools**
@@ -100,6 +115,34 @@ This is especially useful when:
 ```text
 Neovim <--stdio TEP--> host relay <--tcp RLP--> client relay <--stdio MCP--> Codex
 ```
+
+---
+
+## How tool registration and execution work
+
+On the executor-facing side, the relay uses **TEP**.
+
+This flow applies whether the executor is attached to:
+
+- a **direct** relay, or
+- a **host** relay
+
+Typical flow:
+
+1. the Tool Executor connects to `naia-relay` over TEP
+2. it sends `register_executor`
+3. it sends `register_tools` with tool schemas
+4. the relay exposes those tools upstream over MCP
+5. when an agent calls a tool, the relay sends `execute_tool` back to the executor
+6. the executor runs the real local logic
+7. the executor replies with `execution_result` or `execution_error`
+
+In practice, this lets an editor or automation runtime:
+
+- dynamically register tools as they become available
+- receive tool invocations from upstream agents
+- execute the real local implementation
+- return MCP-shaped output through the relay chain
 
 ---
 
