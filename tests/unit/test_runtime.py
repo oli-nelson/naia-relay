@@ -235,6 +235,47 @@ async def test_host_dynamic_listener_writes_readiness_file(
 
 
 @pytest.mark.asyncio
+async def test_executor_tcp_listener_writes_readiness_file(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeSocket:
+        def getsockname(self):
+            return ("127.0.0.1", 65432)
+
+    class FakeServer:
+        sockets = [FakeSocket()]
+
+        def close(self) -> None:
+            return None
+
+        async def wait_closed(self) -> None:
+            return None
+
+    started: list[tuple[str, int]] = []
+
+    async def fake_start_server(handler, host, port):
+        started.append((host, port))
+        return FakeServer()
+
+    monkeypatch.setattr(asyncio, "start_server", fake_start_server)
+    ready_file = tmp_path / "ready.json"
+    config = load_inline_config(
+        "role: host\n"
+        "executor:\n  transport: tcp\n  bind_host: 127.0.0.1\n  bind_port: 0\n"
+        "relay_link:\n  transport: tcp\n  bind_host: 127.0.0.1\n  bind_port: 61280\n"
+    )
+
+    runtime = await run_from_config(config, once=True, ready_file=ready_file)
+    payload = json.loads(ready_file.read_text(encoding="utf-8"))
+
+    assert runtime.role == "host"
+    assert ("127.0.0.1", 0) in started
+    assert payload["listeners"]["executor"]["host"] == "127.0.0.1"
+    assert payload["listeners"]["executor"]["port"] == 65432
+
+
+@pytest.mark.asyncio
 async def test_serve_mcp_stdio_returns_newline_delimited_initialize_response() -> None:
     runtime = create_runtime(
         load_inline_config(

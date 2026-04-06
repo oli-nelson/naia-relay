@@ -199,6 +199,15 @@ Use:
 This is the short-lived relay started for a Codex session. It uses MCP over
 `stdio` and connects upstream to the long-lived host relay over RLP.
 
+### Tool executor examples
+
+Use:
+
+- `examples/tool-executors/README.md`
+
+This folder contains minimal host-side TEP executors in Python, C#, and Rust
+for both `stdio` and `tcp`.
+
 ## Minimal working examples
 
 ### Validate a direct relay config

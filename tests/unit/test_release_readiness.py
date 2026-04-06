@@ -29,6 +29,22 @@ def test_example_shell_scripts_exist_for_supported_modes() -> None:
         assert (REPO_ROOT / relative_path).exists()
 
 
+def test_tool_executor_examples_exist_for_supported_languages() -> None:
+    example_paths = {
+        "examples/tool-executors/README.md",
+        "examples/tool-executors/python/host_stdio_executor.py",
+        "examples/tool-executors/python/host_tcp_executor.py",
+        "examples/tool-executors/csharp/HostStdioExecutor/Program.cs",
+        "examples/tool-executors/csharp/HostTcpExecutor/Program.cs",
+        "examples/tool-executors/rust/Cargo.toml",
+        "examples/tool-executors/rust/src/bin/host_stdio_executor.rs",
+        "examples/tool-executors/rust/src/bin/host_tcp_executor.rs",
+    }
+
+    for relative_path in example_paths:
+        assert (REPO_ROOT / relative_path).exists()
+
+
 def test_documentation_mentions_real_cli_and_example_paths() -> None:
     operator_doc = (REPO_ROOT / "doc" / "operator-guide.md").read_text(encoding="utf-8")
     developer_doc = (REPO_ROOT / "doc" / "developer-guide.md").read_text(encoding="utf-8")
@@ -47,12 +63,18 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     assert "examples/neovim-host/config.yaml" in operator_doc
     assert "examples/codex-client/config.yaml" in operator_doc
     assert "examples/scripts/run-direct.sh" in operator_doc
+    assert "examples/tool-executors/README.md" in (
+        REPO_ROOT / "README.md"
+    ).read_text(encoding="utf-8")
     assert "tests/integration/" in developer_doc
     assert "SPEC.md" in docs_index
     assert "troubleshooting.md" in docs_index
     assert "integrations.md" in docs_index
     assert "Codex + host relay" in integrations_doc
-    assert "Tools are visible, but calling them does not execute the real tool" in troubleshooting_doc
+    assert (
+        "Tools are visible, but calling them does not execute the real tool"
+        in troubleshooting_doc
+    )
     assert "ruff check ." in contributing_doc
     assert "## Unreleased" in changelog_doc
     assert "register_tools" in tep_doc

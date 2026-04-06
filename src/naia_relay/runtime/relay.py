@@ -24,9 +24,17 @@ from naia_relay.protocols.rlp import RLPHandler
 from naia_relay.protocols.tep import TEPHandler
 from naia_relay.protocols.tep.models import (
     ExecutionErrorPayload as TEPExecutionErrorPayload,
+)
+from naia_relay.protocols.tep.models import (
     ExecutionProgressPayload as TEPExecutionProgressPayload,
+)
+from naia_relay.protocols.tep.models import (
     ExecutionResultPayload as TEPExecutionResultPayload,
+)
+from naia_relay.protocols.tep.models import (
     PromptResultPayload as TEPPromptResultPayload,
+)
+from naia_relay.protocols.tep.models import (
     ResourceResultPayload as TEPResourceResultPayload,
 )
 from naia_relay.registry import RegistryStore
@@ -36,6 +44,7 @@ from naia_relay.transports import (
     StdioTransportAdapter,
     TcpTransportAdapter,
 )
+from naia_relay.transports.base import TransportAdapter
 
 RlpRequester = Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
 
@@ -74,6 +83,7 @@ class BaseRelayRuntime:
     last_heartbeat_at: float | None = None
     _requests_drained: asyncio.Event = field(init=False)
     resolved_listeners: dict[str, dict[str, Any]] = field(default_factory=dict)
+    _tep_server: asyncio.AbstractServer | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.logger = logging.getLogger(f"naia_relay.runtime.{self.role}")
@@ -146,6 +156,10 @@ class BaseRelayRuntime:
                 "session_id": self.session_id,
             },
         )
+        if self._tep_server is not None:
+            self._tep_server.close()
+            await self._tep_server.wait_closed()
+            self._tep_server = None
         self.started = False
 
     def _ensure_started(self) -> None:
@@ -268,6 +282,46 @@ class BaseRelayRuntime:
                 "transport": peer,
             },
         )
+
+    async def _start_tep_listener(self, *, bind_host: str, bind_port: int) -> None:
+        async def handle_client(
+            reader: asyncio.StreamReader,
+            writer: asyncio.StreamWriter,
+        ) -> None:
+            adapter = StdioTransportAdapter(
+                reader=reader,
+                writer=writer,
+                max_message_size_bytes=self.config.relay.max_message_size_bytes,
+            )
+            await adapter.start()
+            attach_executor_transport = getattr(self, "attach_executor_transport", None)
+            if callable(attach_executor_transport):
+                attach_executor_transport(adapter)
+            try:
+                while self.started:
+                    try:
+                        message = await adapter.receive()
+                    except Exception:
+                        break
+                    response = await _handle_tep_message_with_runtime(self, message)
+                    if response is not None:
+                        await adapter.send(response)
+            finally:
+                detach_executor_transport = getattr(self, "detach_executor_transport", None)
+                if callable(detach_executor_transport):
+                    detach_executor_transport(adapter)
+                await adapter.stop()
+                writer.close()
+                await writer.wait_closed()
+
+        self._tep_server = await asyncio.start_server(handle_client, bind_host, bind_port)
+        sock = self._tep_server.sockets[0]
+        host, port = sock.getsockname()[:2]
+        self.resolved_listeners["executor"] = {
+            "transport": "tcp",
+            "host": host,
+            "port": port,
+        }
 
 
 @dataclass(slots=True)
@@ -403,7 +457,7 @@ class HostRelayRuntime(BaseRelayRuntime):
     rlp_handler: RLPHandler = field(init=False)
     _rlp_server: asyncio.AbstractServer | None = field(default=None, init=False, repr=False)
     _rlp_framer: LineJsonFramer = field(default_factory=LineJsonFramer, init=False, repr=False)
-    _executor_transport: StdioTransportAdapter | None = field(default=None, init=False, repr=False)
+    _executor_transport: TransportAdapter | None = field(default=None, init=False, repr=False)
     _executor_send_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
     _pending_executor_requests: dict[str, asyncio.Future[Any]] = field(
         default_factory=dict, init=False, repr=False
@@ -567,8 +621,12 @@ class HostRelayRuntime(BaseRelayRuntime):
         async with self._executor_send_lock:
             await self._executor_transport.send(message)
 
-    def attach_executor_transport(self, adapter: StdioTransportAdapter) -> None:
+    def attach_executor_transport(self, adapter: TransportAdapter) -> None:
         self._executor_transport = adapter
+
+    def detach_executor_transport(self, adapter: TransportAdapter | None = None) -> None:
+        if adapter is None or self._executor_transport is adapter:
+            self._executor_transport = None
 
     async def handle_executor_stdio_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
         message_type = str(message.get("message_type") or "")
@@ -1061,6 +1119,11 @@ async def run_from_config(
 ) -> BaseRelayRuntime:
     runtime = create_runtime(config)
     await runtime.start()
+    if getattr(config, "executor", None) is not None and config.executor.transport == "tcp":
+        bind_host = config.executor.bind_host or config.executor.host or "127.0.0.1"
+        bind_port = config.executor.bind_port
+        if bind_port is not None:
+            await runtime._start_tep_listener(bind_host=bind_host, bind_port=bind_port)
     if isinstance(runtime, HostRelayRuntime) and config.relay_link.transport == "tcp":
         bind_port = config.relay_link.bind_port
         if bind_port is not None:
@@ -1131,6 +1194,20 @@ async def serve_mcp_stdio(
         await runtime.stop()
 
 
+async def _handle_tep_message_with_runtime(
+    runtime: BaseRelayRuntime,
+    message: dict[str, Any],
+) -> dict[str, Any] | None:
+    custom_handler = getattr(runtime, "handle_executor_stdio_message", None)
+    if callable(custom_handler):
+        return await custom_handler(message)
+    try:
+        handler = runtime.tep_handler.handle_message_or_error  # type: ignore[attr-defined]
+        return await handler(message)
+    except AttributeError:
+        return await runtime.handle_tep_message(message)  # type: ignore[attr-defined]
+
+
 async def serve_tep_stdio(
     runtime: BaseRelayRuntime,
     *,
@@ -1155,17 +1232,12 @@ async def serve_tep_stdio(
                 message = await adapter.receive()
             except Exception:
                 break
-            custom_handler = getattr(runtime, "handle_executor_stdio_message", None)
-            if callable(custom_handler):
-                response = await custom_handler(message)
-            else:
-                try:
-                    handler = runtime.tep_handler.handle_message_or_error  # type: ignore[attr-defined]
-                    response = await handler(message)
-                except AttributeError:
-                    response = await runtime.handle_tep_message(message)  # type: ignore[attr-defined]
+            response = await _handle_tep_message_with_runtime(runtime, message)
             if response is not None:
                 await adapter.send(response)
     finally:
+        detach_executor_transport = getattr(runtime, "detach_executor_transport", None)
+        if callable(detach_executor_transport):
+            detach_executor_transport(adapter)
         await adapter.stop()
         await runtime.stop()

@@ -5,6 +5,7 @@
 At a high level, it bridges three protocols:
 
 - **MCP** for agent-facing communication
+  - <https://modelcontextprotocol.io/specification/2025-06-18/>
   - this is the protocol used by MCP clients such as Codex
   - from the agent's perspective, `naia-relay` behaves like an MCP-capable peer
 - **TEP** (Tool Executor Protocol) for executor-facing communication
@@ -300,6 +301,8 @@ More example configs live in:
 - [`examples/client/config.yaml`](examples/client/config.yaml)
 - [`examples/neovim-host/config.yaml`](examples/neovim-host/config.yaml)
 - [`examples/codex-client/config.yaml`](examples/codex-client/config.yaml)
+- [`examples/tool-executors/README.md`](examples/tool-executors/README.md) — host-side
+  tool executor examples in Python, C#, and Rust for stdio and TCP TEP
 
 ---
 
