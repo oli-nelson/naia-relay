@@ -371,11 +371,6 @@ relay:
 
 Codex supports MCP servers through the CLI and `~/.codex/config.toml`.
 
-OpenAI’s official docs explicitly show:
-
-- adding a server with `codex mcp add ...`
-- configuring a server in `~/.codex/config.toml` under `[mcp_servers.<name>]`
-
 For `naia-relay`, a typical local stdio-server setup is:
 
 ```toml
