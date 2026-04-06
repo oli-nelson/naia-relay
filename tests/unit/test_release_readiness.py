@@ -33,6 +33,10 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     operator_doc = (REPO_ROOT / "doc" / "operator-guide.md").read_text(encoding="utf-8")
     developer_doc = (REPO_ROOT / "doc" / "developer-guide.md").read_text(encoding="utf-8")
     docs_index = (REPO_ROOT / "doc" / "README.md").read_text(encoding="utf-8")
+    integrations_doc = (REPO_ROOT / "doc" / "integrations.md").read_text(encoding="utf-8")
+    troubleshooting_doc = (REPO_ROOT / "doc" / "troubleshooting.md").read_text(encoding="utf-8")
+    contributing_doc = (REPO_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    changelog_doc = (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     tep_doc = (REPO_ROOT / "doc" / "tep-protocol.md").read_text(encoding="utf-8")
     rlp_doc = (REPO_ROOT / "doc" / "rlp-protocol.md").read_text(encoding="utf-8")
     readiness_doc = (REPO_ROOT / "doc" / "readiness-file.md").read_text(encoding="utf-8")
@@ -45,6 +49,12 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     assert "examples/scripts/run-direct.sh" in operator_doc
     assert "tests/integration/" in developer_doc
     assert "SPEC.md" in docs_index
+    assert "troubleshooting.md" in docs_index
+    assert "integrations.md" in docs_index
+    assert "Codex + host relay" in integrations_doc
+    assert "Tools are visible, but calling them does not execute the real tool" in troubleshooting_doc
+    assert "ruff check ." in contributing_doc
+    assert "## Unreleased" in changelog_doc
     assert "register_tools" in tep_doc
     assert "execute_tool" in tep_doc
     assert "bind_session" in rlp_doc

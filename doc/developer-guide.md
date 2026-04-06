@@ -67,6 +67,44 @@ Typical uses:
 - Neovim owns a long-lived host relay
 - one or more Codex sessions spawn short-lived client relays
 
+## End-to-end request flow
+
+### Direct tool execution
+
+```text
+MCP tools/call
+  -> direct relay MCP handler
+  -> direct relay executor-facing TEP request
+  -> Tool Executor runs the tool
+  -> TEP execution_result / execution_error
+  -> MCP tool result
+```
+
+### Bridged tool execution
+
+```text
+MCP tools/call
+  -> client relay
+  -> RLP execute_tool
+  -> host relay
+  -> TEP execute_tool
+  -> Tool Executor runs the tool
+  -> TEP execution_result / execution_error
+  -> host relay
+  -> RLP response
+  -> client relay
+  -> MCP tool result
+```
+
+### Tool discovery
+
+```text
+Tool Executor register_tools
+  -> host/direct relay authoritative registry
+  -> RLP snapshot/update propagation when bridged
+  -> MCP tools/list
+```
+
 ## Runtime architecture
 
 ### Transport adapters
@@ -78,6 +116,19 @@ Transport adapters are intentionally separate from protocol semantics:
 - `http` for MCP and TEP only
 
 Adapters live under `src/naia_relay/transports/`.
+
+Transport adapters are responsible for:
+
+- framing
+- byte transport
+- connection lifecycle
+
+Protocol handlers are responsible for:
+
+- message validation
+- payload semantics
+- request/response behavior
+- registry mutation and execution flow
 
 ### Protocol handlers
 
@@ -142,3 +193,9 @@ See the `examples/` folder for:
 - `examples/client/config.yaml`
 - `examples/neovim-host/config.yaml`
 - `examples/codex-client/config.yaml`
+
+See also:
+
+- [integrations.md](integrations.md)
+- [troubleshooting.md](troubleshooting.md)
+- [../SPEC.md](../SPEC.md)

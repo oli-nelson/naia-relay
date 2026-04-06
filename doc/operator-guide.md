@@ -2,6 +2,28 @@
 
 This guide is for running `naia-relay` locally as an executable.
 
+## Most common deployment patterns
+
+### Direct relay
+
+```text
+MCP client <--stdio MCP--> naia-relay <--tcp TEP--> Tool Executor
+```
+
+Use this when you want one relay process in the middle.
+
+### Long-lived host + short-lived clients
+
+```text
+Neovim <--stdio TEP--> host relay <--tcp RLP--> client relay <--stdio MCP--> Codex
+```
+
+Use this when:
+
+- the tool host is long-lived
+- the MCP client must keep stable config
+- agent sessions come and go
+
 ## Installation
 
 ### Editable development install
@@ -63,6 +85,12 @@ Run continuously:
 
 ```bash
 naia-relay --config-file examples/direct/config.yaml
+```
+
+Quick smoke test for a client config:
+
+```bash
+naia-relay --config-file examples/client/config.yaml --once
 ```
 
 Write readiness metadata to a file:
@@ -171,6 +199,26 @@ Use:
 This is the short-lived relay started for a Codex session. It uses MCP over
 `stdio` and connects upstream to the long-lived host relay over RLP.
 
+## Minimal working examples
+
+### Validate a direct relay config
+
+```bash
+naia-relay --config-file examples/direct/config.yaml --once
+```
+
+### Run a host relay for a Neovim-like executor
+
+```bash
+naia-relay --config-file examples/neovim-host/config.yaml --ready-file /tmp/naia-relay-ready.json
+```
+
+### Run a client relay for a local MCP client
+
+```bash
+naia-relay --config-file examples/codex-client/config.yaml
+```
+
 ## Example shell scripts
 
 The repository includes runnable shell wrappers in `examples/scripts/`:
@@ -191,6 +239,11 @@ examples/scripts/run-neovim-host.sh
 examples/scripts/run-codex-client.sh
 ```
 
+See also:
+
+- [integrations.md](integrations.md)
+- [troubleshooting.md](troubleshooting.md)
+
 ## Readiness file support
 
 Use a readiness file when a parent process needs startup metadata such as a
@@ -202,6 +255,32 @@ Supported inputs:
 - environment: `NAIA_RELAY_READY_FILE`
 
 See `doc/readiness-file.md` for the file format.
+
+## Quick verification workflow
+
+1. validate config once:
+
+```bash
+naia-relay --config-file /path/to/config.yaml --once
+```
+
+2. run the relay normally
+3. confirm stderr logs show startup summary
+4. if using host mode with dynamic TCP binding, inspect the readiness file
+5. if using a bridged setup, confirm the client relay binds successfully
+
+## Debugging startup failures
+
+If startup fails:
+
+- capture stderr
+- confirm the binary on `PATH` is the one you intended to run
+- verify the config source being used
+- try `--once` first to isolate configuration/startup issues from runtime traffic
+
+See also:
+
+- `doc/troubleshooting.md`
 
 ## Logging
 

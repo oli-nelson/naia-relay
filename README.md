@@ -29,6 +29,69 @@ It is built for setups like:
 - `tcp`
 - `http` (where supported)
 
+If you want the shortest path into the rest of the docs, start with:
+
+- [Operator guide](doc/operator-guide.md)
+- [Integrations guide](doc/integrations.md)
+- [Troubleshooting](doc/troubleshooting.md)
+
+---
+
+## Project status
+
+`naia-relay` is usable today for local direct and bridged relay setups, especially:
+
+- MCP client ↔ relay ↔ local tool executor
+- Neovim-like tool host ↔ host relay ↔ client relay ↔ agent
+
+Current strengths:
+
+- direct mode
+- host/client bridged mode
+- MCP over stdio, TCP, and HTTP
+- TEP over stdio, TCP, and HTTP
+- RLP over stdio and TCP
+- dynamic tool registration and bridged execution forwarding
+
+Current v1 limitations:
+
+- no RLP over HTTP
+- unsupported MCP features include sampling, roots, and completion
+- direct mode cannot use stdio for both MCP and TEP on the same stdin/stdout pair
+
+See also:
+
+- [Unsupported / deferred v1 features](doc/unsupported-v1.md)
+- [Troubleshooting](doc/troubleshooting.md)
+
+---
+
+## Who this is for
+
+`naia-relay` is a good fit if you need:
+
+- a stable MCP-facing process for an agent
+- tools that actually live inside another local process
+- a long-lived tool host with short-lived agent sessions
+- a clean split between protocols and transports
+
+It is probably **not** the right fit if you only need:
+
+- a single in-process tool adapter with no relay boundary
+- remote/distributed deployment as the primary use case
+- full MCP feature coverage beyond the currently implemented v1 scope
+
+---
+
+## Feature summary
+
+- bridges **MCP**, **TEP**, and **RLP**
+- supports **direct**, **host**, and **client** roles
+- transport-adapter architecture for `stdio`, `tcp`, and `http` (where supported)
+- dynamic tool, resource, and prompt registration
+- readiness-file support for dynamic listener discovery
+- subprocess and integration test coverage for core local topologies
+
 ---
 
 ## Why this exists
@@ -81,17 +144,24 @@ pipx install .
 One relay bridges an MCP client directly to a Tool Executor.
 
 ```text
-MCP client <-> naia-relay <-> Tool Executor
+MCP client <--stdio MCP--> naia-relay <--tcp TEP--> Tool Executor
 ```
 
 Use this when you just want one relay process in the middle.
+
+Other valid direct-mode examples include:
+
+```text
+MCP client <--http MCP--> naia-relay <--stdio TEP--> Tool Executor
+MCP client <--tcp MCP--> naia-relay <--http TEP--> Tool Executor
+```
 
 ### Host mode
 
 A long-lived host relay stays attached to a Tool Executor and owns the authoritative tool registry for that session.
 
 ```text
-Tool Executor <-> host naia-relay
+Tool Executor <--stdio TEP--> host naia-relay
 ```
 
 The host relay then exposes that state to downstream client relays over RLP.
@@ -101,7 +171,7 @@ The host relay then exposes that state to downstream client relays over RLP.
 A client relay stays attached to an MCP client and connects upstream to a host relay.
 
 ```text
-host naia-relay <-> client naia-relay <-> MCP client
+host naia-relay <--tcp RLP--> client naia-relay <--stdio MCP--> MCP client
 ```
 
 This is especially useful when:
@@ -114,6 +184,12 @@ This is especially useful when:
 
 ```text
 Neovim <--stdio TEP--> host relay <--tcp RLP--> client relay <--stdio MCP--> Codex
+```
+
+Another valid bridged example is:
+
+```text
+Tool Executor <--tcp TEP--> host relay <--stdio RLP--> client relay <--stdio MCP--> Codex
 ```
 
 ---
@@ -265,6 +341,97 @@ Rules:
 
 ---
 
+## Client setup examples
+
+Here are practical examples of how popular MCP-capable clients can launch
+`naia-relay` in **client** mode.
+
+In each case, the client starts `naia-relay` over stdio, and `naia-relay`
+connects upstream to a host relay over RLP.
+
+Shared client YAML:
+
+```yaml
+role: client
+
+mcp:
+  transport: stdio
+
+relay_link:
+  transport: tcp
+  host: 127.0.0.1
+  port: 61280
+
+relay:
+  log_level: info
+```
+
+### Codex
+
+Codex supports MCP servers through the CLI and `~/.codex/config.toml`.
+
+OpenAI’s official docs explicitly show:
+
+- adding a server with `codex mcp add ...`
+- configuring a server in `~/.codex/config.toml` under `[mcp_servers.<name>]`
+
+For `naia-relay`, a typical local stdio-server setup is:
+
+```toml
+[mcp_servers.naia]
+command = "naia-relay"
+args = ["--config-file", "/absolute/path/to/naia-relay-client.yaml"]
+```
+
+You can also provide the client config through an external environment variable:
+
+```toml
+[mcp_servers.naia]
+command = "naia-relay"
+env_vars = ["NAIA_RELAY_CONFIG_YAML"]
+```
+
+OpenAI docs:
+
+- <https://developers.openai.com/learn/docs-mcp>
+
+### OpenCode
+
+OpenCode supports both local and remote MCP servers. For a local `naia-relay`
+client process, use `type: "local"` and provide the command as an array.
+
+Example `opencode.json` / `opencode.jsonc` entry:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "naia": {
+      "type": "local",
+      "command": ["naia-relay", "--config-file", "/absolute/path/to/naia-relay-client.yaml"],
+      "enabled": true
+    }
+  }
+}
+```
+
+OpenCode config docs:
+
+- <https://opencode.ai/docs/config/>
+
+### Claude Code
+
+```bash
+claude mcp add --transport stdio --scope user naia -- \
+  naia-relay --config-file /absolute/path/to/naia-relay-client.yaml
+```
+
+Claude Code MCP docs:
+
+- <https://docs.anthropic.com/en/docs/claude-code/mcp>
+
+---
+
 ## Readiness files
 
 For setups where a parent process needs to learn runtime metadata such as a dynamically assigned TCP port, `naia-relay` can write a readiness file:
@@ -289,6 +456,8 @@ General docs:
 - [Operator guide](doc/operator-guide.md)
 - [Developer guide](doc/developer-guide.md)
 - [Unsupported / deferred v1 features](doc/unsupported-v1.md)
+- [Troubleshooting](doc/troubleshooting.md)
+- [Integrations guide](doc/integrations.md)
 
 Protocol references:
 
@@ -299,6 +468,12 @@ Project design docs:
 
 - [Specification](SPEC.md)
 - [Implementation plan](PLAN.md)
+
+Contribution and maintenance:
+
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [License](LICENSE)
 
 ---
 
@@ -318,3 +493,21 @@ Run checks:
 ruff check .
 pytest
 ```
+
+## Reporting issues
+
+If you hit a problem, include as much of the following as you can:
+
+- relay role and transport config
+- exact command used to launch `naia-relay`
+- whether the issue is in direct or bridged mode
+- stderr output
+- readiness file contents if relevant
+- whether tools are:
+  - not visible
+  - visible but not executable
+  - returning the wrong result
+
+For common failure modes, start with:
+
+- [Troubleshooting](doc/troubleshooting.md)
