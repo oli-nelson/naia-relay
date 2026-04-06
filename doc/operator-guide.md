@@ -112,7 +112,22 @@ The protocol carried over stdio depends on the peer:
   - JSON messages using newline-delimited framing
 - Codex / MCP client ↔ relay over stdio
   - MCP
-  - MCP `Content-Length` framing as expected by MCP clients such as Codex
+  - official MCP stdio framing: UTF-8 newline-delimited JSON
+
+## Important stdio limitation
+
+`naia-relay` does not support a single direct-mode process using stdio for both:
+
+- MCP client traffic, and
+- Tool Executor traffic
+
+at the same time on one shared stdin/stdout pair.
+
+Supported stdio-based shapes include:
+
+- host mode: executor `stdio` + relay-link `tcp`
+- client mode: MCP `stdio` + relay-link `tcp`
+- bridged topologies where host and client each own their own separate stdio link
 
 ## Example configs
 

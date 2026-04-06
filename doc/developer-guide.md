@@ -106,7 +106,7 @@ The repository uses three layers of tests:
   - transport-aware topology tests
   - direct and bridged end-to-end flows across supported transport combinations
 - `tests/e2e/`
-  - reserved for future external-process end-to-end coverage
+  - subprocess-level runtime loop coverage for MCP stdio and TEP stdio
 
 ## Developer workflow
 
@@ -131,6 +131,7 @@ pytest
 - keep `SPEC.md` as the behavioral source of truth
 - commit at clean phase or checkpoint boundaries
 - prefer transport-agnostic behavior in protocol and registry code
+- do not assume direct mode can use stdio on both sides simultaneously
 
 ## Local examples
 

@@ -51,6 +51,21 @@ In the current v1 implementation:
 - tcp: UTF-8 newline-delimited JSON
 - http: one JSON message per request body unless a documented streaming mode is enabled
 
+### Lua/Neovim interoperability
+
+Some Lua JSON encoders serialize an empty table as `[]` instead of `{}`.
+
+For v1 interoperability, `naia-relay` accepts `[]` in place of `{}` only for
+object-bag fields such as:
+
+- `metadata`
+- `details`
+- `arguments`
+- `context`
+- empty schema/result maps
+
+Non-empty lists are still rejected for these fields.
+
 ## Envelope
 
 Every TEP v1 message uses a common top-level JSON envelope.
@@ -538,6 +553,17 @@ Typical error conditions:
 - unsupported message type
 - unimplemented executor callback
 - malformed payload
+
+When a message has a valid TEP envelope but an invalid payload, the current
+implementation returns a structured `*_response` error instead of terminating
+the stdio server loop.
+
+These responses include:
+
+- `payload.status = "error"`
+- `payload.code`
+- `payload.message`
+- `payload.details.validation_errors`
 
 ## Idempotency guidance
 

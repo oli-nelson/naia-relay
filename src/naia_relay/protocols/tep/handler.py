@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from naia_relay.core import new_message_id
 from naia_relay.protocols.tep.models import (
@@ -58,6 +58,12 @@ class TEPHandler:
     last_execution_error: dict[str, Any] | None = None
     last_resource_result: dict[str, Any] | None = None
     last_prompt_result: dict[str, Any] | None = None
+
+    async def handle_message_or_error(self, message: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return await self.handle_message(message)
+        except (ValidationError, ValueError) as exc:
+            return self.build_validation_error_response(message, exc)
 
     async def handle_message(self, message: dict[str, Any]) -> dict[str, Any]:
         envelope = self.validate_message(message)
@@ -220,3 +226,52 @@ class TEPHandler:
             "execution_id": envelope.execution_id,
             "payload": payload,
         }
+
+    def build_validation_error_response(
+        self,
+        message: dict[str, Any],
+        exc: ValidationError | ValueError,
+    ) -> dict[str, Any]:
+        message_type = str(message.get("message_type") or "invalid_message")
+        payload = StatusPayload(
+            status="error",
+            code="invalid_payload" if message.get("message_type") else "invalid_message",
+            message=self._format_validation_message(exc),
+            details={
+                "validation_errors": self._validation_details(exc),
+                "hint": (
+                    "Check required fields and JSON object fields such as metadata/details; "
+                    "Lua empty tables may need to be encoded as objects rather than arrays."
+                ),
+            },
+        ).model_dump()
+        return {
+            "protocol": "tep",
+            "version": str(message.get("version") or "1.0"),
+            "message_type": f"{message_type}_response",
+            "message_id": new_message_id(),
+            "session_id": message.get("session_id"),
+            "request_id": message.get("request_id") or message.get("message_id"),
+            "execution_id": message.get("execution_id"),
+            "payload": payload,
+        }
+
+    def _format_validation_message(self, exc: ValidationError | ValueError) -> str:
+        if isinstance(exc, ValidationError):
+            first = exc.errors()[0]
+            location = ".".join(str(part) for part in first.get("loc", ())) or "message"
+            return f"Invalid TEP payload at {location}: {first.get('msg', str(exc))}"
+        return str(exc)
+
+    def _validation_details(self, exc: ValidationError | ValueError) -> list[dict[str, Any]]:
+        if isinstance(exc, ValidationError):
+            return [
+                {
+                    "loc": list(item.get("loc", ())),
+                    "msg": item.get("msg"),
+                    "type": item.get("type"),
+                    "input": item.get("input"),
+                }
+                for item in exc.errors()
+            ]
+        return [{"loc": [], "msg": str(exc), "type": "value_error"}]

@@ -587,7 +587,6 @@ Goal: prove the whole system works across the transport and topology combination
 
 ### Test requirements
 
-- [x] Direct: stdio MCP ↔ stdio TEP passes end to end
 - [x] Direct: stdio MCP ↔ TCP TEP passes end to end
 - [x] Direct: TCP MCP ↔ stdio TEP passes end to end
 - [x] Direct: stdio MCP ↔ HTTP TEP passes end to end
@@ -602,6 +601,7 @@ Goal: prove the whole system works across the transport and topology combination
 - [x] Resource read works end to end
 - [x] Prompt retrieval works end to end
 - [x] Disconnect/reconnect and resnapshot work end to end
+- [x] Direct dual-stdio configuration is rejected explicitly
 
 ### Definition of done
 

@@ -364,10 +364,10 @@ Example configuration model:
 
 This creates combinations such as:
 
-- stdio ↔ stdio
 - stdio ↔ tcp
 - tcp ↔ http
 - http ↔ stdio
+- stdio ↔ http
 
 The transport must not affect:
 
@@ -411,14 +411,20 @@ Typical use cases:
 
 ### stdio on both sides
 
-`stdio` may be configured on either side, including both sides at once, but each stdio connection requires its own dedicated process I/O channel.
+`stdio` may be configured on either side, but each stdio connection requires
+its own dedicated process I/O channel.
 
 Therefore:
 
-- it is valid for the relay design to support `stdio ↔ stdio`
-- it is not valid to assume one shared stdin/stdout pair can serve both endpoints simultaneously
+- host mode may use executor `stdio`
+- client mode may use MCP `stdio`
+- bridged topologies may use stdio on multiple hops when those hops belong to
+  different process relationships
+- a single direct-mode process must not assume one shared stdin/stdout pair can
+  serve both the MCP side and the executor side simultaneously
 
-In practice, dual-stdio setups require a process topology where the relay has separate stdio relationships to two different peer processes.
+In the current implementation, direct-mode dual-stdio configuration is rejected
+at config validation time.
 
 ## 7.4 TCP Adapter
 
@@ -1904,7 +1910,6 @@ Cover:
 
 Cover transport combinations such as:
 
-- stdio ↔ stdio
 - stdio ↔ tcp
 - tcp ↔ stdio
 - stdio ↔ http

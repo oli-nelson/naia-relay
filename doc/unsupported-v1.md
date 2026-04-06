@@ -25,15 +25,22 @@ If configured, validation should fail before runtime startup.
 
 ### stdio on both sides
 
-Supported only when each side has a dedicated stdio channel.
+The implementation does not support a single direct-mode process using stdio
+for both MCP and TEP on one shared stdin/stdout pair.
 
 `naia-relay` cannot use one shared stdin/stdout pair for two independent peers.
+
+Supported alternatives are:
+
+- host mode with executor `stdio` and relay-link `tcp`
+- client mode with MCP `stdio` and relay-link `tcp`
+- bridged topologies where different relay processes own different stdio channels
 
 ## Current implementation notes
 
 - integration coverage exists for direct and bridged topologies
-- external-process end-to-end orchestration is still lighter than the full spec vision
-- the `tests/e2e/` area is reserved for future process-level coverage
+- process-level `tests/e2e/` coverage exists for MCP stdio and TEP stdio runtime loops
+- direct dual-stdio configuration is explicitly rejected at config validation time
 
 ## Expected structured runtime errors
 

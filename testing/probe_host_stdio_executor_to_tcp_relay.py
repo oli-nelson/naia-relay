@@ -35,7 +35,7 @@ from naia_relay.config import load_config
 from naia_relay.runtime import HostRelayRuntime
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 61280
+DEFAULT_PORT = 0
 DEFAULT_TOOL_NAME = "test_tool"
 
 

@@ -81,7 +81,10 @@ async def test_tep_handler_register_executor_and_terminal_messages() -> None:
     handler = TEPHandler(registry=RegistryStore(mode="authoritative"))
 
     register_response = await handler.handle_message(
-        make_message("register_executor", {"executor_id": "nvim", "display_name": "Neovim"})
+        make_message(
+            "register_executor",
+            {"executor_id": "nvim", "display_name": "Neovim", "metadata": []},
+        )
     )
     progress_response = await handler.handle_message(
         make_message(
@@ -109,6 +112,24 @@ async def test_tep_handler_register_executor_and_terminal_messages() -> None:
     assert progress_response["payload"]["status"] == "ok"
     assert result_response["payload"]["status"] == "ok"
     assert error_response["payload"]["status"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_tep_handler_returns_structured_validation_error_response() -> None:
+    handler = TEPHandler(registry=RegistryStore(mode="authoritative"))
+
+    response = await handler.handle_message_or_error(
+        make_message(
+            "register_executor",
+            {"executor_id": "nvim", "display_name": "Neovim", "metadata": ["bad"]},
+        )
+    )
+
+    assert response["message_type"] == "register_executor_response"
+    assert response["payload"]["status"] == "error"
+    assert response["payload"]["code"] == "invalid_payload"
+    assert "metadata" in response["payload"]["message"]
+    assert response["payload"]["details"]["validation_errors"][0]["loc"] == ["metadata"]
 
 
 @pytest.mark.asyncio

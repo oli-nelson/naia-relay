@@ -8,6 +8,9 @@ See `doc/` for the current developer and operator documentation set:
 - `doc/developer-guide.md`
 - `doc/operator-guide.md`
 - `doc/unsupported-v1.md`
+- `doc/tep-protocol.md`
+- `doc/rlp-protocol.md`
+- `doc/readiness-file.md`
 
 ## Quick start
 
@@ -29,6 +32,17 @@ The relay loads YAML configuration from one of:
 - `NAIA_RELAY_CONFIG_YAML`
 
 See `SPEC.md` and `PLAN.md` for design and implementation details.
+
+## Important transport note
+
+`stdio` is protocol-dependent:
+
+- MCP over stdio uses official MCP newline-delimited JSON framing
+- TEP over stdio uses newline-delimited JSON
+- RLP over stdio uses newline-delimited JSON
+
+`naia-relay` does **not** support a single direct-mode process using stdio for
+both the MCP side and the executor side at the same time.
 
 ## Operator-visible logs
 

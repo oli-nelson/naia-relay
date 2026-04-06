@@ -33,7 +33,7 @@ import textwrap
 from typing import Any
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 61884
+DEFAULT_PORT = 61280
 DEFAULT_PROTOCOL_VERSION = "2025-06-18"
 
 

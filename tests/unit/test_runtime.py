@@ -13,6 +13,7 @@ from naia_relay.runtime import (
     create_runtime,
     run_from_config,
     serve_mcp_stdio,
+    serve_tep_stdio,
 )
 
 
@@ -267,6 +268,52 @@ async def test_serve_mcp_stdio_returns_newline_delimited_initialize_response() -
 
     assert writer.buffer.endswith(b"\n")
     assert b'"protocolVersion":"2025-06-18"' in writer.buffer
+
+
+@pytest.mark.asyncio
+async def test_serve_tep_stdio_returns_structured_validation_error_and_keeps_running() -> None:
+    runtime = create_runtime(
+        load_inline_config(
+            "role: host\n"
+            "executor:\n  transport: stdio\n"
+            "relay_link:\n  transport: tcp\n  bind_port: 9001\n"
+        )
+    )
+    reader = asyncio.StreamReader()
+
+    class BufferWriter:
+        def __init__(self) -> None:
+            self.buffer = bytearray()
+
+        def write(self, data: bytes) -> None:
+            self.buffer.extend(data)
+
+        def flush(self) -> None:
+            return None
+
+    writer = BufferWriter()
+    invalid_request = (
+        b'{"protocol":"tep","version":"1.0","message_type":"register_executor",'
+        b'"message_id":"msg_bad","session_id":"sess_exec","payload":{"executor_id":"nvim",'
+        b'"metadata":["bad"]}}\n'
+    )
+    valid_request = (
+        b'{"protocol":"tep","version":"1.0","message_type":"register_executor",'
+        b'"message_id":"msg_ok","session_id":"sess_exec","payload":{"executor_id":"nvim",'
+        b'"metadata":[]}}\n'
+    )
+    reader.feed_data(invalid_request + valid_request)
+    reader.feed_eof()
+
+    await runtime.start()
+    await serve_tep_stdio(runtime, reader=reader, writer=writer)
+
+    lines = [json.loads(line) for line in writer.buffer.decode("utf-8").splitlines() if line]
+    assert lines[0]["message_type"] == "register_executor_response"
+    assert lines[0]["payload"]["status"] == "error"
+    assert lines[0]["payload"]["code"] == "invalid_payload"
+    assert "metadata" in lines[0]["payload"]["message"]
+    assert lines[1]["payload"]["status"] == "ok"
 
 
 @pytest.mark.asyncio

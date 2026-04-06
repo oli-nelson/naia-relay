@@ -2,11 +2,17 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class TEPBaseModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+def _coerce_empty_list_to_dict(value: Any) -> Any:
+    if value == []:
+        return {}
+    return value
 
 
 class ExecutorCapabilities(TEPBaseModel):
@@ -21,6 +27,8 @@ class RegisterExecutorPayload(TEPBaseModel):
     capabilities: ExecutorCapabilities = Field(default_factory=ExecutorCapabilities)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    _normalize_metadata = field_validator("metadata", mode="before")(_coerce_empty_list_to_dict)
+
 
 class ToolPayload(TEPBaseModel):
     name: str
@@ -29,6 +37,14 @@ class ToolPayload(TEPBaseModel):
     title: str | None = None
     output_schema: dict[str, Any] | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    _normalize_input_schema = field_validator("input_schema", mode="before")(
+        _coerce_empty_list_to_dict
+    )
+    _normalize_output_schema = field_validator("output_schema", mode="before")(
+        _coerce_empty_list_to_dict
+    )
+    _normalize_metadata = field_validator("metadata", mode="before")(_coerce_empty_list_to_dict)
 
 
 class RegisterToolsPayload(TEPBaseModel):
@@ -46,6 +62,8 @@ class ResourcePayload(TEPBaseModel):
     mime_type: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    _normalize_metadata = field_validator("metadata", mode="before")(_coerce_empty_list_to_dict)
+
 
 class RegisterResourcesPayload(TEPBaseModel):
     resources: list[ResourcePayload]
@@ -60,11 +78,16 @@ class ReadResourcePayload(TEPBaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
     context: dict[str, Any] = Field(default_factory=dict)
 
+    _normalize_arguments = field_validator("arguments", mode="before")(_coerce_empty_list_to_dict)
+    _normalize_context = field_validator("context", mode="before")(_coerce_empty_list_to_dict)
+
 
 class ResourceResultPayload(TEPBaseModel):
     uri: str
     contents: list[Any]
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    _normalize_metadata = field_validator("metadata", mode="before")(_coerce_empty_list_to_dict)
 
 
 class PromptArgumentPayload(TEPBaseModel):
@@ -78,6 +101,8 @@ class PromptPayload(TEPBaseModel):
     description: str
     arguments: list[PromptArgumentPayload] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    _normalize_metadata = field_validator("metadata", mode="before")(_coerce_empty_list_to_dict)
 
 
 class RegisterPromptsPayload(TEPBaseModel):
@@ -93,11 +118,16 @@ class GetPromptPayload(TEPBaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
     context: dict[str, Any] = Field(default_factory=dict)
 
+    _normalize_arguments = field_validator("arguments", mode="before")(_coerce_empty_list_to_dict)
+    _normalize_context = field_validator("context", mode="before")(_coerce_empty_list_to_dict)
+
 
 class PromptResultPayload(TEPBaseModel):
     name: str
     messages: list[Any]
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    _normalize_metadata = field_validator("metadata", mode="before")(_coerce_empty_list_to_dict)
 
 
 class ExecuteToolPayload(TEPBaseModel):
@@ -105,6 +135,9 @@ class ExecuteToolPayload(TEPBaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
     context: dict[str, Any] = Field(default_factory=dict)
     stream: bool = False
+
+    _normalize_arguments = field_validator("arguments", mode="before")(_coerce_empty_list_to_dict)
+    _normalize_context = field_validator("context", mode="before")(_coerce_empty_list_to_dict)
 
 
 class ProgressPayload(TEPBaseModel):
@@ -123,12 +156,17 @@ class ExecutionResultPayload(TEPBaseModel):
     is_error: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    _normalize_result = field_validator("result", mode="before")(_coerce_empty_list_to_dict)
+    _normalize_metadata = field_validator("metadata", mode="before")(_coerce_empty_list_to_dict)
+
 
 class ExecutionErrorPayload(TEPBaseModel):
     tool_name: str
     code: str
     message: str
     details: dict[str, Any] = Field(default_factory=dict)
+
+    _normalize_details = field_validator("details", mode="before")(_coerce_empty_list_to_dict)
 
 
 class HeartbeatPayload(TEPBaseModel):
@@ -144,6 +182,8 @@ class StatusPayload(TEPBaseModel):
     code: str | None = None
     message: str | None = None
     details: dict[str, Any] = Field(default_factory=dict)
+
+    _normalize_details = field_validator("details", mode="before")(_coerce_empty_list_to_dict)
 
 
 MESSAGE_PAYLOAD_MODELS: dict[str, type[TEPBaseModel]] = {
@@ -166,4 +206,3 @@ MESSAGE_PAYLOAD_MODELS: dict[str, type[TEPBaseModel]] = {
     "shutdown": DisconnectPayload,
     "disconnect_notice": DisconnectPayload,
 }
-

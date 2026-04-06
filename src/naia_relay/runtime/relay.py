@@ -22,6 +22,13 @@ from naia_relay.errors import ConfigurationError, ProtocolError
 from naia_relay.protocols.mcp import MCPHandler
 from naia_relay.protocols.rlp import RLPHandler
 from naia_relay.protocols.tep import TEPHandler
+from naia_relay.protocols.tep.models import (
+    ExecutionErrorPayload as TEPExecutionErrorPayload,
+    ExecutionProgressPayload as TEPExecutionProgressPayload,
+    ExecutionResultPayload as TEPExecutionResultPayload,
+    PromptResultPayload as TEPPromptResultPayload,
+    ResourceResultPayload as TEPResourceResultPayload,
+)
 from naia_relay.registry import RegistryStore
 from naia_relay.transports import (
     LineJsonFramer,
@@ -396,6 +403,14 @@ class HostRelayRuntime(BaseRelayRuntime):
     rlp_handler: RLPHandler = field(init=False)
     _rlp_server: asyncio.AbstractServer | None = field(default=None, init=False, repr=False)
     _rlp_framer: LineJsonFramer = field(default_factory=LineJsonFramer, init=False, repr=False)
+    _executor_transport: StdioTransportAdapter | None = field(default=None, init=False, repr=False)
+    _executor_send_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
+    _pending_executor_requests: dict[str, asyncio.Future[Any]] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    _pending_executor_executions: dict[str, asyncio.Future[Any]] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         BaseRelayRuntime.__post_init__(self)
@@ -428,6 +443,8 @@ class HostRelayRuntime(BaseRelayRuntime):
             self._rlp_server.close()
             await self._rlp_server.wait_closed()
             self._rlp_server = None
+        if self._executor_transport is not None:
+            self._executor_transport = None
         await BaseRelayRuntime.stop(self)
 
     async def handle_tep_message(self, message: dict[str, Any]) -> dict[str, Any]:
@@ -464,13 +481,176 @@ class HostRelayRuntime(BaseRelayRuntime):
         return [{"role": "user", "content": {"name": payload.name, "arguments": payload.arguments}}]
 
     async def _rlp_execute_tool(self, payload: Any) -> dict[str, Any]:
-        return await self._executor_execute_tool(payload)
+        if self._executor_transport is None:
+            return await self._executor_execute_tool(payload)
+        message_id = new_message_id()
+        execution_id = new_execution_id()
+        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+        self._pending_executor_executions[execution_id] = future
+        await self._send_executor_message(
+            {
+                "protocol": "tep",
+                "version": "1.0",
+                "message_type": "execute_tool",
+                "message_id": message_id,
+                "session_id": f"{self.session_id}:executor",
+                "execution_id": execution_id,
+                "payload": {
+                    "tool_name": payload.tool_name,
+                    "arguments": payload.arguments,
+                    "context": payload.context,
+                    "stream": payload.stream,
+                },
+            }
+        )
+        try:
+            return await self._with_request_timeout(future)
+        finally:
+            self._pending_executor_executions.pop(execution_id, None)
 
     async def _rlp_read_resource(self, payload: Any) -> list[Any]:
-        return await self._executor_read_resource(payload)
+        if self._executor_transport is None:
+            return await self._executor_read_resource(payload)
+        message_id = new_message_id()
+        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+        self._pending_executor_requests[message_id] = future
+        await self._send_executor_message(
+            {
+                "protocol": "tep",
+                "version": "1.0",
+                "message_type": "read_resource",
+                "message_id": message_id,
+                "session_id": f"{self.session_id}:executor",
+                "payload": {
+                    "uri": payload.uri,
+                    "arguments": payload.arguments,
+                    "context": payload.context,
+                },
+            }
+        )
+        try:
+            return await self._with_request_timeout(future)
+        finally:
+            self._pending_executor_requests.pop(message_id, None)
 
     async def _rlp_get_prompt(self, payload: Any) -> list[Any]:
-        return await self._executor_get_prompt(payload)
+        if self._executor_transport is None:
+            return await self._executor_get_prompt(payload)
+        message_id = new_message_id()
+        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+        self._pending_executor_requests[message_id] = future
+        await self._send_executor_message(
+            {
+                "protocol": "tep",
+                "version": "1.0",
+                "message_type": "get_prompt",
+                "message_id": message_id,
+                "session_id": f"{self.session_id}:executor",
+                "payload": {
+                    "name": payload.name,
+                    "arguments": payload.arguments,
+                    "context": payload.context,
+                },
+            }
+        )
+        try:
+            return await self._with_request_timeout(future)
+        finally:
+            self._pending_executor_requests.pop(message_id, None)
+
+    async def _send_executor_message(self, message: dict[str, Any]) -> None:
+        if self._executor_transport is None:
+            raise ProtocolError(
+                "Executor transport is not connected",
+                code="executor_not_connected",
+            )
+        async with self._executor_send_lock:
+            await self._executor_transport.send(message)
+
+    def attach_executor_transport(self, adapter: StdioTransportAdapter) -> None:
+        self._executor_transport = adapter
+
+    async def handle_executor_stdio_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
+        message_type = str(message.get("message_type") or "")
+        if message_type.endswith("_response"):
+            request_id = str(message.get("request_id") or "")
+            future = self._pending_executor_requests.get(request_id)
+            if future is not None and not future.done():
+                payload = message.get("payload", {})
+                if isinstance(payload, dict) and payload.get("status") == "ok":
+                    future.set_result(payload.get("details", {}))
+                else:
+                    future.set_exception(
+                        ProtocolError(
+                            str(payload.get("message", "Executor request failed")),
+                            code=str(payload.get("code", "executor_error")),
+                            data=payload.get("details", {}) if isinstance(payload, dict) else {},
+                        )
+                    )
+            return None
+        if message_type == "execution_progress":
+            response = await self.tep_handler.handle_message_or_error(message)
+            try:
+                payload = TEPExecutionProgressPayload.model_validate(message.get("payload", {}))
+            except Exception:
+                return response
+            self.rlp_handler.last_progress = payload.model_dump()
+            return response
+        if message_type == "execution_result":
+            response = await self.tep_handler.handle_message_or_error(message)
+            try:
+                payload = TEPExecutionResultPayload.model_validate(message.get("payload", {}))
+            except Exception:
+                return response
+            execution_id = str(message.get("execution_id") or "")
+            future = self._pending_executor_executions.get(execution_id)
+            if future is not None and not future.done():
+                future.set_result(payload.result)
+            self.rlp_handler.last_execution_result = payload.model_dump()
+            return response
+        if message_type == "execution_error":
+            response = await self.tep_handler.handle_message_or_error(message)
+            try:
+                payload = TEPExecutionErrorPayload.model_validate(message.get("payload", {}))
+            except Exception:
+                return response
+            execution_id = str(message.get("execution_id") or "")
+            future = self._pending_executor_executions.get(execution_id)
+            if future is not None and not future.done():
+                future.set_exception(
+                    ProtocolError(
+                        payload.message,
+                        code=payload.code,
+                        data=payload.details,
+                    )
+                )
+            self.rlp_handler.last_execution_error = payload.model_dump()
+            return response
+        if message_type == "resource_result":
+            response = await self.tep_handler.handle_message_or_error(message)
+            try:
+                payload = TEPResourceResultPayload.model_validate(message.get("payload", {}))
+            except Exception:
+                return response
+            request_id = str(message.get("request_id") or "")
+            future = self._pending_executor_requests.get(request_id)
+            if future is not None and not future.done():
+                future.set_result(payload.contents)
+            self.rlp_handler.last_resource_result = payload.model_dump()
+            return response
+        if message_type == "prompt_result":
+            response = await self.tep_handler.handle_message_or_error(message)
+            try:
+                payload = TEPPromptResultPayload.model_validate(message.get("payload", {}))
+            except Exception:
+                return response
+            request_id = str(message.get("request_id") or "")
+            future = self._pending_executor_requests.get(request_id)
+            if future is not None and not future.done():
+                future.set_result(payload.messages)
+            self.rlp_handler.last_prompt_result = payload.model_dump()
+            return response
+        return await self.tep_handler.handle_message_or_error(message)
 
     async def _start_rlp_listener(self, *, bind_port: int) -> None:
         bind_host = self.config.relay_link.bind_host or "127.0.0.1"
@@ -966,13 +1146,24 @@ async def serve_tep_stdio(
         max_message_size_bytes=runtime.config.relay.max_message_size_bytes,
     )
     await adapter.start()
+    attach_executor_transport = getattr(runtime, "attach_executor_transport", None)
+    if callable(attach_executor_transport):
+        attach_executor_transport(adapter)
     try:
         while runtime.started:
             try:
                 message = await adapter.receive()
             except Exception:
                 break
-            response = await runtime.handle_tep_message(message)  # type: ignore[attr-defined]
+            custom_handler = getattr(runtime, "handle_executor_stdio_message", None)
+            if callable(custom_handler):
+                response = await custom_handler(message)
+            else:
+                try:
+                    handler = runtime.tep_handler.handle_message_or_error  # type: ignore[attr-defined]
+                    response = await handler(message)
+                except AttributeError:
+                    response = await runtime.handle_tep_message(message)  # type: ignore[attr-defined]
             if response is not None:
                 await adapter.send(response)
     finally:

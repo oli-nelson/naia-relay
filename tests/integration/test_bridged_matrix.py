@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import pytest
+
+from naia_relay.runtime import serve_tep_stdio
 
 from .helpers import (
     build_client_runtime,
@@ -11,6 +14,28 @@ from .helpers import (
     register_demo_executor_content,
     stdio_round_trip,
 )
+
+
+class LinkedWriter:
+    def __init__(self, peer_reader: asyncio.StreamReader) -> None:
+        self.peer_reader = peer_reader
+        self.closed = False
+
+    def write(self, data: bytes) -> None:
+        self.peer_reader.feed_data(data)
+
+    async def drain(self) -> None:
+        return None
+
+    def close(self) -> None:
+        self.closed = True
+        self.peer_reader.feed_eof()
+
+    async def wait_closed(self) -> None:
+        return None
+
+    def is_closing(self) -> bool:
+        return self.closed
 
 
 @pytest.mark.asyncio
@@ -225,3 +250,103 @@ async def test_regression_bridged_tool_calls_forward_to_host_executor() -> None:
     await host.stop()
 
     assert tool_call["result"]["content"][0]["text"] == "host-forwarded"
+
+
+@pytest.mark.asyncio
+async def test_bridged_tool_call_reaches_stdio_executor_and_returns_real_output() -> None:
+    host = build_host_runtime()
+    client = build_client_runtime("tcp")
+    host_reader = asyncio.StreamReader()
+    executor_reader = asyncio.StreamReader()
+    host_writer = LinkedWriter(executor_reader)
+    executor_writer = LinkedWriter(host_reader)
+    registered = asyncio.Event()
+
+    async def requester(message: dict[str, object]) -> dict[str, object]:
+        response = await build_round_trip("tcp")(host.handle_rlp_message, message)
+        assert response is not None
+        return response
+
+    async def fake_executor() -> None:
+        from naia_relay.transports import StdioTransportAdapter
+
+        adapter = StdioTransportAdapter(reader=executor_reader, writer=executor_writer)
+        await adapter.start()
+        await adapter.send(
+            {
+                "protocol": "tep",
+                "version": "1.0",
+                "message_type": "register_executor",
+                "message_id": "msg_exec",
+                "session_id": "sess_exec",
+                "payload": {"executor_id": "fake_nvim", "metadata": {}},
+            }
+        )
+        await adapter.receive()
+        await adapter.send(
+            {
+                "protocol": "tep",
+                "version": "1.0",
+                "message_type": "register_tools",
+                "message_id": "msg_tools",
+                "session_id": "sess_exec",
+                "payload": {
+                    "tools": [{"name": "demo", "description": "Demo", "input_schema": {}}]
+                },
+            }
+        )
+        await adapter.receive()
+        registered.set()
+        request = await adapter.receive()
+        assert request["message_type"] == "execute_tool"
+        assert request["payload"]["tool_name"] == "demo"
+        await adapter.send(
+            {
+                "protocol": "tep",
+                "version": "1.0",
+                "message_type": "execution_result",
+                "message_id": "msg_exec_result",
+                "session_id": "sess_exec",
+                "request_id": request["message_id"],
+                "execution_id": request["execution_id"],
+                "payload": {
+                    "tool_name": "demo",
+                    "result": {
+                        "content": [{"type": "text", "text": "from-real-executor"}],
+                        "isError": False,
+                    },
+                },
+            }
+        )
+        await adapter.receive()
+        executor_writer.close()
+        await adapter.stop()
+
+    await host.start()
+    await client.start()
+    host_task = asyncio.create_task(serve_tep_stdio(host, reader=host_reader, writer=host_writer))
+    executor_task = asyncio.create_task(fake_executor())
+    await registered.wait()
+
+    await client.bind_via_requester(
+        requester,
+        host_session_id=host.session_id,
+        host_relay_id=host.relay_id,
+    )
+
+    tool_call = await stdio_round_trip(
+        client.handle_mcp_message,
+        {
+            "jsonrpc": "2.0",
+            "id": 30,
+            "method": "tools/call",
+            "params": {"name": "demo", "arguments": {"x": 9}},
+        },
+    )
+
+    await client.stop()
+    await executor_task
+    with contextlib.suppress(Exception):
+        await host_task
+
+    assert tool_call["result"]["content"][0]["text"] == "from-real-executor"
