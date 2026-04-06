@@ -1,6 +1,13 @@
-# naia-relay
+# NAIA Relay
+
+Disclamer:
+_This system was built with the assistance of AI agents, but the design, implementation details and code review/iteration 
+were all done by myself. For details, see [the design docs](SPEC.md) and [the implementation plan](PLAN.md)._
 
 `naia-relay` is a flexible Python server/relay for the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) that lets agents, tool executors, and other relays talk to each other across multiple transports.
+
+"NAIA" originally stood for "Neovim Artifical Intelligence Adapter", but the project has since evolved to support a wider range
+of use cases and protocols beyond just Neovim integration. The name has stuck, but the scope is now broader.
 
 At a high level, it bridges three protocols:
 
