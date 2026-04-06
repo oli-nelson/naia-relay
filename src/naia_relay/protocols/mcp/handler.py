@@ -51,13 +51,7 @@ class MCPHandler:
                     request.id,
                     {
                         "tools": [
-                            {
-                                "name": tool.name,
-                                "title": tool.title,
-                                "description": tool.description,
-                                "inputSchema": tool.input_schema,
-                                "outputSchema": tool.output_schema,
-                            }
+                            self._serialize_tool(tool)
                             for tool in self.registry.snapshot()["tools"]
                         ]
                     },
@@ -82,12 +76,7 @@ class MCPHandler:
                     request.id,
                     {
                         "resources": [
-                            {
-                                "uri": resource.uri,
-                                "name": resource.name,
-                                "description": resource.description,
-                                "mimeType": resource.mime_type,
-                            }
+                            self._serialize_resource(resource)
                             for resource in self.registry.snapshot()["resources"]
                         ]
                     },
@@ -164,6 +153,29 @@ class MCPHandler:
             "method": "notifications/message",
             "params": {"level": level, "data": data or {"message": message}},
         }
+
+    def _serialize_tool(self, tool: Any) -> dict[str, Any]:
+        payload = {
+            "name": tool.name,
+            "description": tool.description,
+            "inputSchema": tool.input_schema,
+        }
+        if tool.title is not None:
+            payload["title"] = tool.title
+        if tool.output_schema is not None:
+            payload["outputSchema"] = tool.output_schema
+        return payload
+
+    def _serialize_resource(self, resource: Any) -> dict[str, Any]:
+        payload = {
+            "uri": resource.uri,
+            "name": resource.name,
+        }
+        if resource.description is not None:
+            payload["description"] = resource.description
+        if resource.mime_type is not None:
+            payload["mimeType"] = resource.mime_type
+        return payload
 
     def _result(self, request_id: str | int | None, result: dict[str, Any]) -> dict[str, Any]:
         return {"jsonrpc": "2.0", "id": request_id, "result": result}

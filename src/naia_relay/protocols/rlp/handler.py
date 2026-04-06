@@ -220,36 +220,9 @@ class RLPHandler:
         snapshot = self.registry.snapshot()
         return {
             "registry_revision": snapshot["revision"],
-            "tools": [
-                {
-                    "name": tool.name,
-                    "title": tool.title,
-                    "description": tool.description,
-                    "input_schema": tool.input_schema,
-                    "output_schema": tool.output_schema,
-                    "metadata": tool.metadata,
-                }
-                for tool in snapshot["tools"]
-            ],
-            "resources": [
-                {
-                    "uri": resource.uri,
-                    "name": resource.name,
-                    "description": resource.description,
-                    "mime_type": resource.mime_type,
-                    "metadata": resource.metadata,
-                }
-                for resource in snapshot["resources"]
-            ],
-            "prompts": [
-                {
-                    "name": prompt.name,
-                    "description": prompt.description,
-                    "arguments": prompt.arguments,
-                    "metadata": prompt.metadata,
-                }
-                for prompt in snapshot["prompts"]
-            ],
+            "tools": [self._serialize_tool(tool) for tool in snapshot["tools"]],
+            "resources": [self._serialize_resource(resource) for resource in snapshot["resources"]],
+            "prompts": [self._serialize_prompt(prompt) for prompt in snapshot["prompts"]],
         }
 
     def _replace_registry_from_snapshot(self, payload: SnapshotPayload) -> None:
@@ -353,6 +326,45 @@ class RLPHandler:
                 metadata=payload.prompt.metadata,
             )
         )
+
+    def _serialize_tool(self, tool: Any) -> dict[str, Any]:
+        payload = {
+            "name": tool.name,
+            "description": tool.description,
+            "input_schema": tool.input_schema,
+            "metadata": tool.metadata,
+        }
+        if tool.title is not None:
+            payload["title"] = tool.title
+        if tool.output_schema is not None:
+            payload["output_schema"] = tool.output_schema
+        return payload
+
+    def _serialize_resource(self, resource: Any) -> dict[str, Any]:
+        payload = {
+            "uri": resource.uri,
+            "name": resource.name,
+            "metadata": resource.metadata,
+        }
+        if resource.description is not None:
+            payload["description"] = resource.description
+        if resource.mime_type is not None:
+            payload["mime_type"] = resource.mime_type
+        return payload
+
+    def _serialize_prompt_argument(self, argument: dict[str, Any]) -> dict[str, Any]:
+        payload = {"name": argument["name"], "required": bool(argument.get("required", False))}
+        if argument.get("description") is not None:
+            payload["description"] = argument["description"]
+        return payload
+
+    def _serialize_prompt(self, prompt: Any) -> dict[str, Any]:
+        return {
+            "name": prompt.name,
+            "description": prompt.description,
+            "arguments": [self._serialize_prompt_argument(argument) for argument in prompt.arguments],
+            "metadata": prompt.metadata,
+        }
 
     def _ok_response(
         self, envelope: RLPEnvelope, details: dict[str, Any] | None = None

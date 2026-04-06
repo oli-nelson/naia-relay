@@ -96,6 +96,58 @@ async def test_direct_runtime_routes_tool_execution() -> None:
 
 
 @pytest.mark.asyncio
+async def test_direct_runtime_omits_optional_fields_in_mcp_discovery_after_tep_registration() -> None:
+    runtime = create_runtime(
+        load_inline_config(
+            "role: direct\n"
+            "mcp:\n  transport: stdio\n"
+            "executor:\n  transport: tcp\n  port: 9002\n"
+        )
+    )
+    await runtime.start()
+    await runtime.handle_tep_message(
+        {
+            "protocol": "tep",
+            "version": "1.0",
+            "message_type": "register_tools",
+            "message_id": "msg_tools",
+            "session_id": "sess_exec",
+            "payload": {
+                "tools": [
+                    {
+                        "name": "demo",
+                        "description": "Demo",
+                        "input_schema": {},
+                    }
+                ]
+            },
+        }
+    )
+    await runtime.handle_tep_message(
+        {
+            "protocol": "tep",
+            "version": "1.0",
+            "message_type": "register_resources",
+            "message_id": "msg_resources",
+            "session_id": "sess_exec",
+            "payload": {"resources": [{"uri": "file:///demo", "name": "demo"}]},
+        }
+    )
+
+    tools = await runtime.handle_mcp_message({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+    resources = await runtime.handle_mcp_message(
+        {"jsonrpc": "2.0", "id": 2, "method": "resources/list"}
+    )
+
+    await runtime.stop()
+
+    assert "title" not in tools["result"]["tools"][0]
+    assert "outputSchema" not in tools["result"]["tools"][0]
+    assert "description" not in resources["result"]["resources"][0]
+    assert "mimeType" not in resources["result"]["resources"][0]
+
+
+@pytest.mark.asyncio
 async def test_host_accepts_client_and_client_binds() -> None:
     host = HostRelayRuntime(
         config=load_inline_config(
@@ -129,6 +181,45 @@ async def test_host_accepts_client_and_client_binds() -> None:
 
     assert response["payload"]["status"] == "ok"
     assert host.stats.attached_clients == 1
+
+
+@pytest.mark.asyncio
+async def test_client_runtime_omits_optional_fields_in_mcp_discovery_after_rlp_sync() -> None:
+    client = ClientRelayRuntime(
+        config=load_inline_config(
+            "role: client\nmcp:\n  transport: stdio\nrelay_link:\n  transport: tcp\n  port: 9001\n"
+        )
+    )
+    await client.start()
+
+    await client.handle_rlp_message(
+        {
+            "protocol": "rlp",
+            "version": "1.0",
+            "message_type": "tool_snapshot",
+            "message_id": "msg_snapshot",
+            "relay_session_id": client.session_id,
+            "source_relay_id": "host_1",
+            "payload": {
+                "registry_revision": 1,
+                "tools": [{"name": "demo", "description": "Demo", "input_schema": {}}],
+                "resources": [{"uri": "file:///demo", "name": "demo"}],
+                "prompts": [],
+            },
+        }
+    )
+
+    tools = await client.handle_mcp_message({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+    resources = await client.handle_mcp_message(
+        {"jsonrpc": "2.0", "id": 2, "method": "resources/list"}
+    )
+
+    await client.stop()
+
+    assert "title" not in tools["result"]["tools"][0]
+    assert "outputSchema" not in tools["result"]["tools"][0]
+    assert "description" not in resources["result"]["resources"][0]
+    assert "mimeType" not in resources["result"]["resources"][0]
 
 
 @pytest.mark.asyncio

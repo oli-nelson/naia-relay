@@ -46,8 +46,50 @@ async def test_mcp_lists_tools_resources_and_prompts() -> None:
     prompts = await handler.handle_message({"jsonrpc": "2.0", "id": 3, "method": "prompts/list"})
 
     assert tools["result"]["tools"][0]["name"] == "demo"
+    assert "outputSchema" not in tools["result"]["tools"][0]
     assert resources["result"]["resources"][0]["uri"] == "file:///demo"
+    assert "description" not in resources["result"]["resources"][0]
+    assert "mimeType" not in resources["result"]["resources"][0]
     assert prompts["result"]["prompts"][0]["name"] == "prompt"
+
+
+@pytest.mark.asyncio
+async def test_mcp_lists_output_schema_only_when_present() -> None:
+    registry = RegistryStore(mode="authoritative")
+    registry.register_tool(
+        ToolDefinition(
+            name="demo",
+            description="Demo",
+            input_schema={},
+            output_schema={"type": "object"},
+        )
+    )
+    handler = MCPHandler(registry=registry)
+
+    tools = await handler.handle_message({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+
+    assert tools["result"]["tools"][0]["outputSchema"] == {"type": "object"}
+
+
+@pytest.mark.asyncio
+async def test_mcp_lists_resource_optional_fields_only_when_present() -> None:
+    registry = RegistryStore(mode="authoritative")
+    registry.register_resource(
+        ResourceDefinition(
+            uri="file:///demo",
+            name="demo",
+            description="Demo resource",
+            mime_type="text/plain",
+        )
+    )
+    handler = MCPHandler(registry=registry)
+
+    resources = await handler.handle_message(
+        {"jsonrpc": "2.0", "id": 1, "method": "resources/list"}
+    )
+
+    assert resources["result"]["resources"][0]["description"] == "Demo resource"
+    assert resources["result"]["resources"][0]["mimeType"] == "text/plain"
 
 
 @pytest.mark.asyncio

@@ -69,7 +69,63 @@ async def test_rlp_bind_session_returns_snapshot_details() -> None:
 
     assert response["payload"]["status"] == "ok"
     assert response["payload"]["details"]["registry_revision"] == handler.registry.revision
+    assert "title" not in response["payload"]["details"]["tools"][0]
+    assert "output_schema" not in response["payload"]["details"]["tools"][0]
+    assert "description" not in response["payload"]["details"]["resources"][0]
+    assert "mime_type" not in response["payload"]["details"]["resources"][0]
     assert handler.bound_client_count() == 1
+
+
+@pytest.mark.asyncio
+async def test_rlp_bind_session_includes_optional_snapshot_fields_only_when_present() -> None:
+    registry = RegistryStore(mode="authoritative")
+    registry.register_tool(
+        ToolDefinition(
+            name="demo",
+            title="Demo",
+            description="Demo",
+            input_schema={},
+            output_schema={"type": "object"},
+        )
+    )
+    registry.register_resource(
+        ResourceDefinition(
+            uri="file:///demo",
+            name="demo",
+            description="Demo resource",
+            mime_type="text/plain",
+        )
+    )
+    registry.register_prompt(
+        PromptDefinition(
+            name="prompt",
+            description="Prompt",
+            arguments=[{"name": "x", "description": "Arg", "required": True}],
+        )
+    )
+    handler = RLPHandler(
+        registry=registry,
+        host_relay_id="host_1",
+        relay_session_id="relay_session_1",
+        session_token="secret",
+    )
+
+    response = await handler.handle_message(
+        make_message(
+            "bind_session",
+            {
+                "relay_session_id": "relay_session_1",
+                "session_token": "secret",
+                "client_instance_id": "client_1",
+            },
+        )
+    )
+
+    assert response["payload"]["details"]["tools"][0]["title"] == "Demo"
+    assert response["payload"]["details"]["tools"][0]["output_schema"] == {"type": "object"}
+    assert response["payload"]["details"]["resources"][0]["description"] == "Demo resource"
+    assert response["payload"]["details"]["resources"][0]["mime_type"] == "text/plain"
+    assert response["payload"]["details"]["prompts"][0]["arguments"][0]["description"] == "Arg"
 
 
 @pytest.mark.asyncio
