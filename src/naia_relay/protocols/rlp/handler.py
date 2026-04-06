@@ -145,17 +145,25 @@ class RLPHandler:
                     return self._error_response(
                         envelope, "unimplemented", "execute_tool callback missing"
                     )
-                return self._ok_response(envelope, await self.execute_tool(payload))
+                try:
+                    return self._ok_response(envelope, await self.execute_tool(payload))
+                except Exception as exc:
+                    return self._exception_response(envelope, exc, default_code="execution_failed")
             case "read_resource":
                 assert isinstance(payload, ReadResourcePayload)
                 if self.read_resource is None:
                     return self._error_response(
                         envelope, "unimplemented", "read_resource callback missing"
                     )
-                return self._ok_response(
-                    envelope,
-                    {"uri": payload.uri, "contents": await self.read_resource(payload)},
-                )
+                try:
+                    return self._ok_response(
+                        envelope,
+                        {"uri": payload.uri, "contents": await self.read_resource(payload)},
+                    )
+                except Exception as exc:
+                    return self._exception_response(
+                        envelope, exc, default_code="resource_read_failed"
+                    )
             case "resource_result":
                 assert isinstance(payload, ResourceResultPayload)
                 self.last_resource_result = payload.model_dump()
@@ -166,10 +174,13 @@ class RLPHandler:
                     return self._error_response(
                         envelope, "unimplemented", "get_prompt callback missing"
                     )
-                return self._ok_response(
-                    envelope,
-                    {"name": payload.name, "messages": await self.get_prompt(payload)},
-                )
+                try:
+                    return self._ok_response(
+                        envelope,
+                        {"name": payload.name, "messages": await self.get_prompt(payload)},
+                    )
+                except Exception as exc:
+                    return self._exception_response(envelope, exc, default_code="prompt_get_failed")
             case "prompt_result":
                 assert isinstance(payload, PromptResultPayload)
                 self.last_prompt_result = payload.model_dump()
@@ -360,8 +371,19 @@ class RLPHandler:
             "payload": payload,
         }
 
-    def _error_response(self, envelope: RLPEnvelope, code: str, message: str) -> dict[str, Any]:
-        payload = StatusPayload(status="error", code=code, message=message).model_dump()
+    def _error_response(
+        self,
+        envelope: RLPEnvelope,
+        code: str,
+        message: str,
+        details: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        payload = StatusPayload(
+            status="error",
+            code=code,
+            message=message,
+            details=details or {},
+        ).model_dump()
         return {
             "protocol": "rlp",
             "version": "1.0",
@@ -374,3 +396,27 @@ class RLPHandler:
             "execution_id": envelope.execution_id,
             "payload": payload,
         }
+
+    def _exception_response(
+        self,
+        envelope: RLPEnvelope,
+        exc: Exception,
+        *,
+        default_code: str,
+    ) -> dict[str, Any]:
+        from naia_relay.errors import ProtocolError
+
+        if isinstance(exc, ProtocolError):
+            details = dict(exc.data)
+            details.setdefault("exception_type", type(exc).__name__)
+            details.setdefault("detail", str(exc))
+            return self._error_response(envelope, exc.code, str(exc), details)
+        return self._error_response(
+            envelope,
+            default_code,
+            str(exc),
+            {
+                "exception_type": type(exc).__name__,
+                "detail": str(exc),
+            },
+        )

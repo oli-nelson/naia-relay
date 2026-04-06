@@ -7,11 +7,38 @@ import pytest
 from naia_relay.config import load_config
 from naia_relay.errors import ProtocolError
 from naia_relay.runtime import ClientRelayRuntime, DirectRelayRuntime, HostRelayRuntime
+from naia_relay.transports.base import TransportAdapter
 
 
 def load_inline_config(text: str):
     config, _ = load_config(cli_config_yaml=text)
     return config
+
+
+class DummyTransport(TransportAdapter):
+    def __init__(self) -> None:
+        self.sent_messages: list[dict[str, object]] = []
+        self.send_called = asyncio.Event()
+
+    async def start(self) -> None:
+        return None
+
+    async def stop(self) -> None:
+        return None
+
+    async def send(self, message: dict[str, object]) -> None:
+        self.sent_messages.append(message)
+        self.send_called.set()
+        return None
+
+    async def receive(self) -> dict[str, object]:
+        raise AssertionError("receive should not be called in this test")
+
+    def connection_info(self) -> dict[str, object]:
+        return {"transport": "dummy"}
+
+    def is_connected(self) -> bool:
+        return True
 
 
 @pytest.mark.asyncio
@@ -302,6 +329,118 @@ async def test_transport_failures_are_mapped_to_structured_protocol_errors(
     assert exc_info.value.data["exception_type"] == "RuntimeError"
 
     await client.stop()
+    await host.stop()
+
+
+@pytest.mark.asyncio
+async def test_host_executor_disconnect_returns_structured_rlp_error() -> None:
+    host = HostRelayRuntime(
+        config=load_inline_config(
+            "role: host\n"
+            "executor:\n  transport: stdio\n"
+            "relay_link:\n  transport: tcp\n  bind_port: 9001\n"
+    )
+    )
+    await host.start()
+    await host.handle_tep_message(
+        {
+            "protocol": "tep",
+            "version": "1.0",
+            "message_type": "register_tools",
+            "message_id": "msg_1",
+            "session_id": "sess_exec",
+            "payload": {
+                "tools": [{"name": "demo", "description": "Demo", "input_schema": {}}]
+            },
+        }
+    )
+    adapter = DummyTransport()
+    host.attach_executor_transport(adapter)
+
+    request_task = asyncio.create_task(
+        host.handle_rlp_message(
+            {
+                "protocol": "rlp",
+                "version": "1.0",
+                "message_type": "execute_tool",
+                "message_id": "msg_exec",
+                "relay_session_id": host.session_id,
+                "source_relay_id": "client_1",
+                "execution_id": "exec_1",
+                "payload": {"tool_name": "demo", "arguments": {}},
+            }
+        )
+    )
+    await adapter.send_called.wait()
+    host.detach_executor_transport(adapter)
+
+    response = await request_task
+
+    assert response["payload"]["status"] == "error"
+    assert response["payload"]["code"] == "executor_disconnected"
+    assert response["payload"]["message"] == "Executor transport disconnected"
+    assert response["payload"]["details"]["exception_type"] == "ProtocolError"
+
+    await host.stop()
+
+
+@pytest.mark.asyncio
+async def test_host_execution_error_with_result_becomes_tool_error_result() -> None:
+    host = HostRelayRuntime(
+        config=load_inline_config(
+            "role: host\n"
+            "executor:\n  transport: stdio\n"
+            "relay_link:\n  transport: tcp\n  bind_port: 9001\n"
+        )
+    )
+    await host.start()
+    adapter = DummyTransport()
+    host.attach_executor_transport(adapter)
+
+    request_task = asyncio.create_task(
+        host.handle_rlp_message(
+            {
+                "protocol": "rlp",
+                "version": "1.0",
+                "message_type": "execute_tool",
+                "message_id": "msg_exec",
+                "relay_session_id": host.session_id,
+                "source_relay_id": "client_1",
+                "execution_id": "exec_1",
+                "payload": {"tool_name": "demo", "arguments": {}},
+            }
+        )
+    )
+    await adapter.send_called.wait()
+    sent_execution_id = str(adapter.sent_messages[0]["execution_id"])
+    await host.handle_executor_stdio_message(
+        {
+            "protocol": "tep",
+            "version": "1.0",
+            "message_type": "execution_error",
+            "message_id": "msg_exec_error",
+            "session_id": "sess_exec",
+            "execution_id": sent_execution_id,
+            "payload": {
+                "tool_name": "demo",
+                "code": "tool_error",
+                "message": "demo failed",
+                "details": {
+                    "result": {
+                        "content": [{"type": "text", "text": "demo failed"}],
+                        "isError": True,
+                    }
+                },
+            },
+        }
+    )
+
+    response = await request_task
+
+    assert response["payload"]["status"] == "ok"
+    assert response["payload"]["details"]["isError"] is True
+    assert response["payload"]["details"]["content"][0]["text"] == "demo failed"
+
     await host.stop()
 
 

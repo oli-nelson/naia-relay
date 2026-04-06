@@ -636,6 +636,20 @@ class HostRelayRuntime(BaseRelayRuntime):
     def detach_executor_transport(self, adapter: TransportAdapter | None = None) -> None:
         if adapter is None or self._executor_transport is adapter:
             self._executor_transport = None
+            self._fail_pending_executor_operations(
+                ProtocolError(
+                    "Executor transport disconnected",
+                    code="executor_disconnected",
+                )
+            )
+
+    def _fail_pending_executor_operations(self, exc: Exception) -> None:
+        for future in self._pending_executor_requests.values():
+            if not future.done():
+                future.set_exception(exc)
+        for future in self._pending_executor_executions.values():
+            if not future.done():
+                future.set_exception(exc)
 
     async def handle_executor_stdio_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
         message_type = str(message.get("message_type") or "")
@@ -684,13 +698,17 @@ class HostRelayRuntime(BaseRelayRuntime):
             execution_id = str(message.get("execution_id") or "")
             future = self._pending_executor_executions.get(execution_id)
             if future is not None and not future.done():
-                future.set_exception(
-                    ProtocolError(
-                        payload.message,
-                        code=payload.code,
-                        data=payload.details,
+                result = payload.details.get("result") if isinstance(payload.details, dict) else None
+                if isinstance(result, dict):
+                    future.set_result(result)
+                else:
+                    future.set_exception(
+                        ProtocolError(
+                            payload.message,
+                            code=payload.code,
+                            data=payload.details,
+                        )
                     )
-                )
             self.rlp_handler.last_execution_error = payload.model_dump()
             return response
         if message_type == "resource_result":
@@ -1010,9 +1028,15 @@ class ClientRelayRuntime(BaseRelayRuntime):
             }
         )
         if response["payload"]["status"] != "ok":
+            details = response["payload"].get("details", {})
+            if isinstance(details, dict):
+                result = details.get("result")
+                if isinstance(result, dict):
+                    return result
             raise ProtocolError(
                 response["payload"].get("message", "Upstream tool execution failed"),
                 code=str(response["payload"].get("code", "upstream_error")),
+                data=details if isinstance(details, dict) else {},
             )
         return response["payload"]["details"]
 
