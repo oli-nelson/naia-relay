@@ -6,8 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from naia_relay.errors import ConfigurationError
 
-TransportType = Literal["stdio", "tcp", "http"]
-RelayLinkTransportType = Literal["stdio", "tcp"]
+McpTransportType = Literal["stdio", "http"]
+ExecutorTransportType = Literal["stdio", "tcp"]
+RelayLinkTransportType = Literal["tcp"]
 RoleType = Literal["direct", "host", "client"]
 
 
@@ -28,16 +29,12 @@ class RelayConfig(NaiaBaseModel):
 
 
 class McpConfig(NaiaBaseModel):
-    transport: TransportType
+    transport: McpTransportType
     host: str | None = None
     port: int | None = Field(default=None, ge=1, le=65535)
 
     @model_validator(mode="after")
     def validate_transport_requirements(self) -> McpConfig:
-        if self.transport == "tcp":
-            self.host = self.host or "127.0.0.1"
-            if self.port is None:
-                raise ValueError("mcp.port is required when mcp.transport=tcp")
         if self.transport == "http":
             self.host = self.host or "127.0.0.1"
             if self.port is None:
@@ -46,7 +43,7 @@ class McpConfig(NaiaBaseModel):
 
 
 class TcpEndpointConfig(NaiaBaseModel):
-    transport: TransportType
+    transport: ExecutorTransportType
     host: str | None = None
     port: int | None = Field(default=None, ge=1, le=65535)
     bind_host: str | None = None
@@ -59,11 +56,6 @@ class TcpEndpointConfig(NaiaBaseModel):
                 self.host = "127.0.0.1"
             if self.port is None and self.bind_port is None:
                 raise ValueError("tcp transport requires port or bind_port")
-        if self.transport == "http":
-            if self.host is None and self.bind_host is None:
-                self.host = "127.0.0.1"
-            if self.port is None and self.bind_port is None:
-                raise ValueError("http transport requires port or bind_port")
         return self
 
 

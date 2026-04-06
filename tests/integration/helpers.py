@@ -160,7 +160,6 @@ async def register_demo_executor_content(
     round_trip = {
         "stdio": stdio_round_trip,
         "tcp": tcp_round_trip,
-        "http": http_round_trip,
     }[transport]
 
     await round_trip(
@@ -207,8 +206,8 @@ def build_round_trip(transport: str):
 
 
 def build_direct_runtime(mcp_transport: str, executor_transport: str) -> DirectRelayRuntime:
-    mcp_port_block = "  port: 9101\n" if mcp_transport in {"tcp", "http"} else ""
-    executor_port_block = "  port: 9102\n" if executor_transport in {"tcp", "http"} else ""
+    mcp_port_block = "  port: 9101\n" if mcp_transport == "http" else ""
+    executor_port_block = "  port: 9102\n" if executor_transport == "tcp" else ""
     config = load_inline_config(
         "role: direct\n"
         f"mcp:\n  transport: {mcp_transport}\n"

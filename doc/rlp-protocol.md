@@ -28,9 +28,8 @@ Its job is to:
 
 ## Transport support
 
-RLP v1 supports:
+In the current v1 executable/runtime, RLP runs over:
 
-- `stdio`
 - `tcp`
 
 RLP over `http` is out of scope in v1.
@@ -43,7 +42,7 @@ RLP v1 uses JSON.
 
 ### Framing
 
-The current v1 framing rule is UTF-8 newline-delimited JSON for stdio and tcp.
+In the current v1 executable/runtime, RLP over tcp uses UTF-8 newline-delimited JSON.
 
 ## Roles
 
@@ -644,5 +643,5 @@ For the main Neovim/Codex workflow:
 - Neovim owns a long-lived host relay
 - each Codex session owns a short-lived client relay
 - Codex talks MCP to its local client relay over stdio
-- the client relay talks RLP to the host relay over stdio or tcp
+- the client relay talks RLP to the host relay over tcp
 - the host relay talks TEP to Neovim

@@ -28,11 +28,10 @@ Typical examples:
 
 TEP semantics must not change based on transport.
 
-In v1, TEP can run over:
+In the current v1 executable/runtime, TEP runs over:
 
 - `stdio`
 - `tcp`
-- `http`
 
 Transport adapters are responsible for framing and delivery, not protocol
 meaning.
@@ -49,7 +48,6 @@ In the current v1 implementation:
 
 - stdio: UTF-8 newline-delimited JSON
 - tcp: UTF-8 newline-delimited JSON
-- http: one JSON message per request body unless a documented streaming mode is enabled
 
 ### Lua/Neovim interoperability
 

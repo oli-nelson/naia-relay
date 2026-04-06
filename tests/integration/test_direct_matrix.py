@@ -14,8 +14,7 @@ from .helpers import (
     ("mcp_transport", "executor_transport"),
     [
         ("stdio", "tcp"),
-        ("tcp", "stdio"),
-        ("stdio", "http"),
+        ("http", "tcp"),
         ("http", "stdio"),
     ],
 )

@@ -39,7 +39,7 @@ class LinkedWriter:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("rlp_transport", ["tcp", "stdio"])
+@pytest.mark.parametrize("rlp_transport", ["tcp"])
 async def test_bridged_topology_supports_end_to_end_flows(rlp_transport: str) -> None:
     host = build_host_runtime()
     client = build_client_runtime(rlp_transport=rlp_transport)
@@ -216,13 +216,13 @@ async def test_bridged_reconnect_and_resnapshot_restore_updated_state() -> None:
 @pytest.mark.asyncio
 async def test_regression_bridged_tool_calls_forward_to_host_executor() -> None:
     host = build_host_runtime()
-    client = build_client_runtime("stdio")
+    client = build_client_runtime("tcp")
 
     async def forwarded_execute(payload):
         return {"content": [{"type": "text", "text": "host-forwarded"}]}
 
     async def requester(message: dict[str, object]) -> dict[str, object]:
-        response = await stdio_round_trip(host.handle_rlp_message, message)
+        response = await build_round_trip("tcp")(host.handle_rlp_message, message)
         assert response is not None
         return response
 

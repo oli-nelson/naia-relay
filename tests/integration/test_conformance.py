@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from .helpers import (
+    build_round_trip,
     build_client_runtime,
     build_direct_runtime,
     build_host_runtime,
@@ -53,12 +54,12 @@ async def test_malformed_rlp_message_fails_cleanly() -> None:
 @pytest.mark.asyncio
 async def test_unsupported_mcp_features_fail_explicitly_in_bridged_mode() -> None:
     host = build_host_runtime()
-    client = build_client_runtime("stdio")
+    client = build_client_runtime("tcp")
     await host.start()
     await client.start()
 
     async def requester(message: dict[str, object]) -> dict[str, object]:
-        response = await stdio_round_trip(host.handle_rlp_message, message)
+        response = await build_round_trip("tcp")(host.handle_rlp_message, message)
         assert response is not None
         return response
 

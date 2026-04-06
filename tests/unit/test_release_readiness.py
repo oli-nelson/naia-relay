@@ -64,7 +64,8 @@ def test_documentation_mentions_real_cli_and_example_paths() -> None:
     assert "mcp-compatibility.md" in docs_index
     assert "troubleshooting.md" in docs_index
     assert "integrations.md" in docs_index
-    assert "host_tcp_executor.py" in getting_started_doc
+    assert "http_print_message_tool.py" in getting_started_doc
+    assert "http://127.0.0.1:8181/mcp" in getting_started_doc
     assert "2025-06-18" in mcp_doc
     assert "sampling/createMessage" in mcp_doc
     assert "Codex + host relay" in integrations_doc

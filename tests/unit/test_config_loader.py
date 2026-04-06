@@ -157,6 +157,39 @@ def test_relay_link_http_is_rejected() -> None:
         )
 
 
+def test_mcp_tcp_is_rejected() -> None:
+    with pytest.raises(ConfigurationError):
+        load_config(
+            cli_config_yaml=(
+                "role: direct\n"
+                "mcp:\n  transport: tcp\n  port: 9001\n"
+                "executor:\n  transport: tcp\n  port: 9002\n"
+            )
+        )
+
+
+def test_executor_http_is_rejected() -> None:
+    with pytest.raises(ConfigurationError):
+        load_config(
+            cli_config_yaml=(
+                "role: direct\n"
+                "mcp:\n  transport: http\n  port: 9001\n"
+                "executor:\n  transport: http\n  port: 9002\n"
+            )
+        )
+
+
+def test_relay_link_stdio_is_rejected() -> None:
+    with pytest.raises(ConfigurationError):
+        load_config(
+            cli_config_yaml=(
+                "role: client\n"
+                "mcp:\n  transport: stdio\n"
+                "relay_link:\n  transport: stdio\n"
+            )
+        )
+
+
 def test_host_relay_link_bind_port_zero_is_allowed() -> None:
     config, _ = load_config(
         cli_config_yaml=(

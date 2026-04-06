@@ -135,12 +135,15 @@ The protocol carried over stdio depends on the peer:
 - Tool Executor ↔ relay over stdio
   - TEP
   - JSON messages using newline-delimited framing
-- relay ↔ relay over stdio
-  - RLP
-  - JSON messages using newline-delimited framing
 - Codex / MCP client ↔ relay over stdio
   - MCP
   - official MCP stdio framing: UTF-8 newline-delimited JSON
+
+For relay-to-relay links in the current executable/runtime, use:
+
+- relay ↔ relay over tcp
+  - RLP
+  - JSON messages using newline-delimited framing
 
 ## Important stdio limitation
 
